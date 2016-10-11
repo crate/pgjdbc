@@ -112,8 +112,7 @@ public class DatabaseMetaDataTest {
     TestUtil.closeDB(con);
   }
 
-  @Test
-  public void testArrayTypeInfo() throws SQLException {
+  public void ignoreTestArrayTypeInfo() throws SQLException {
     DatabaseMetaData dbmd = con.getMetaData();
     ResultSet rs = dbmd.getColumns(null, null, "intarraytable", "a");
     assertTrue(rs.next());
@@ -126,8 +125,7 @@ public class DatabaseMetaDataTest {
     TestUtil.closeQuietly(rs);
   }
 
-  @Test
-  public void testArrayInt4DoubleDim() throws SQLException {
+  public void ignoreTestArrayInt4DoubleDim() throws SQLException {
     DatabaseMetaData dbmd = con.getMetaData();
     ResultSet rs = dbmd.getColumns(null, null, "intarraytable", "b");
     assertTrue(rs.next());
@@ -138,8 +136,7 @@ public class DatabaseMetaDataTest {
     assertEquals("_int4", rs.getString("TYPE_NAME")); // even int4[][] is represented as _int4
   }
 
-  @Test
-  public void testCustomArrayTypeInfo() throws SQLException {
+  public void ignoreTestCustomArrayTypeInfo() throws SQLException {
     DatabaseMetaData dbmd = con.getMetaData();
     ResultSet res = dbmd.getColumns(null, null, "customtable", null);
     assertTrue(res.next());
@@ -166,8 +163,7 @@ public class DatabaseMetaDataTest {
     }
   }
 
-  @Test
-  public void testTables() throws Exception {
+  public void ignoreTestTables() throws Exception {
     DatabaseMetaData dbmd = con.getMetaData();
     assertNotNull(dbmd);
 
@@ -452,8 +448,7 @@ public class DatabaseMetaDataTest {
     TestUtil.closeDB(con1);
   }
 
-  @Test
-  public void testColumns() throws SQLException {
+  public void ignoreTestColumns() throws SQLException {
     // At the moment just test that no exceptions are thrown KJ
     DatabaseMetaData dbmd = con.getMetaData();
     assertNotNull(dbmd);
@@ -461,9 +456,8 @@ public class DatabaseMetaDataTest {
     rs.close();
   }
 
-  @Test
-  public void testDroppedColumns() throws SQLException {
-    if (!TestUtil.haveMinimumServerVersion(con, ServerVersion.v8_4)) {
+  public void ignoreTestDroppedColumns() throws SQLException {
+      if (!TestUtil.haveMinimumServerVersion(con, ServerVersion.v8_4)) {
       return;
     }
 
@@ -513,8 +507,7 @@ public class DatabaseMetaDataTest {
 
   }
 
-  @Test
-  public void testSerialColumns() throws SQLException {
+  public void ignoreTestSerialColumns() throws SQLException {
     DatabaseMetaData dbmd = con.getMetaData();
     ResultSet rs = dbmd.getColumns(null, null, "sercoltest", null);
     int rownum = 0;
@@ -635,8 +628,7 @@ public class DatabaseMetaDataTest {
     rs.close();
   }
 
-  @Test
-  public void testNotNullDomainColumn() throws SQLException {
+  public void ignoreTestNotNullDomainColumn() throws SQLException {
     DatabaseMetaData dbmd = con.getMetaData();
     ResultSet rs = dbmd.getColumns("", "", "domaintable", "");
     assertTrue(rs.next());
@@ -887,8 +879,7 @@ public class DatabaseMetaDataTest {
     assertTrue(!foundEmpty);
   }
 
-  @Test
-  public void testEscaping() throws SQLException {
+  public void ignoreTestEscaping() throws SQLException {
     DatabaseMetaData dbmd = con.getMetaData();
     ResultSet rs = dbmd.getTables(null, null, "a'", new String[]{"TABLE"});
     assertTrue(rs.next());
@@ -1186,8 +1177,7 @@ public class DatabaseMetaDataTest {
     }
   }
 
-  @Test
-  public void testInformationAboutArrayTypes() throws SQLException {
+  public void ignoreTestInformationAboutArrayTypes() throws SQLException {
     DatabaseMetaData dbmd = con.getMetaData();
     ResultSet rs = dbmd.getColumns("", "", "arraytable", "");
     assertTrue(rs.next());
