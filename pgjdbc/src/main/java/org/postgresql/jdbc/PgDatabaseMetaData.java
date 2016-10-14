@@ -1311,6 +1311,9 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
         .append("'");
     }
 
+    where.append(" and column_name not like '%[%]'");
+    where.append(" and column_name not like '%.%'");
+
     if (tableNamePattern != null) {
       where.append(" and table_name like '")
         .append(connection.escapeString(tableNamePattern))
