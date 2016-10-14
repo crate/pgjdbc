@@ -137,6 +137,7 @@ dependencies {
     }
     shaded("com.ongres.scram:scram-client:3.2")
 
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
     implementation("org.checkerframework:checker-qual:3.55.1")
     java11.implementationConfigurationName("org.checkerframework:checker-qual:3.55.1")
 
@@ -465,9 +466,10 @@ val extraMavenPublications by configurations.getting
 }
 
 // Guards the published pom against accidental dependency leaks/losses. The driver shades its
-// compile dependencies, so the pom should declare only the two unshaded runtime dependencies:
-// checker-qual (its @Nullable annotations stay in the bytecode) and waffle-jna (the optional SSPI
-// dependency). Versions are intentionally ignored, so dependency bumps do not require touching the
+// compile dependencies, so the pom should declare only the unshaded runtime dependencies:
+// checker-qual (its @Nullable annotations stay in the bytecode), waffle-jna (the optional SSPI
+// dependency) and jackson-databind (the object and json handling calls into it at runtime).
+// Versions are intentionally ignored, so dependency bumps do not require touching the
 // expectation; update the list below only when the set of unshaded runtime dependencies changes.
 val verifyPublishedPomDependencies by tasks.registering {
     description = "Verifies the published pom declares exactly the expected runtime dependencies"
@@ -480,6 +482,7 @@ val verifyPublishedPomDependencies by tasks.registering {
     inputs.file(pomFile)
 
     val expected = listOf(
+        "com.fasterxml.jackson.core:jackson-databind scope=runtime optional=false",
         "com.github.waffle:waffle-jna scope=runtime optional=true",
         "org.checkerframework:checker-qual scope=runtime optional=false"
     )
