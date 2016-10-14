@@ -5,6 +5,8 @@
 
 package org.postgresql.jdbc;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.Driver;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.CachedQuery;
@@ -19,7 +21,6 @@ import org.postgresql.largeobject.LargeObject;
 import org.postgresql.largeobject.LargeObjectManager;
 import org.postgresql.util.ByteConverter;
 import org.postgresql.util.GT;
-import org.postgresql.util.HStoreConverter;
 import org.postgresql.util.PGBinaryObject;
 import org.postgresql.util.PGTime;
 import org.postgresql.util.PGTimestamp;
@@ -68,6 +69,9 @@ import java.util.TimeZone;
 import java.util.UUID;
 
 class PgPreparedStatement extends PgStatement implements PreparedStatement {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   protected final CachedQuery preparedQuery; // Query fragments for prepared statement.
   protected final ParameterList preparedParameters; // Parameter values for prepared statement.
 
@@ -454,16 +458,14 @@ class PgPreparedStatement extends PgStatement implements PreparedStatement {
   }
 
   private void setMap(int parameterIndex, Map<?, ?> x) throws SQLException {
-    int oid = connection.getTypeInfo().getPGType("hstore");
-    if (oid == Oid.UNSPECIFIED) {
-      throw new PSQLException(GT.tr("No hstore extension installed."),
-          PSQLState.INVALID_PARAMETER_TYPE);
-    }
-    if (connection.binaryTransferSend(oid)) {
-      byte[] data = HStoreConverter.toBytes(x, connection.getEncoding());
-      bindBytes(parameterIndex, data, oid);
-    } else {
-      setString(parameterIndex, HStoreConverter.toString(x), oid);
+    PGobject pgObject = new PGobject();
+    pgObject.setType("json");
+    try {
+      pgObject.setValue(OBJECT_MAPPER.writeValueAsString(x));
+      setPGobject(parameterIndex, pgObject);
+    } catch (JsonProcessingException e) {
+      throw new PSQLException(GT.tr("Cannot convert map to PGobject: {0}", pgObject.getValue()),
+        PSQLState.INVALID_PARAMETER_VALUE);
     }
   }
 

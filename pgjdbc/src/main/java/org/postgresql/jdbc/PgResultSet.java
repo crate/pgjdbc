@@ -5,6 +5,7 @@
 
 package org.postgresql.jdbc;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.PGResultSetMetaData;
 import org.postgresql.PGStatement;
 import org.postgresql.core.BaseConnection;
@@ -76,6 +77,8 @@ import java.util.logging.Level;
 
 
 public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultSet {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   // needed for updateable result set support
   private boolean updateable = false;
@@ -216,6 +219,15 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
       default:
         String type = getPGType(columnIndex);
 
+        if (type.equals("json")) {
+          PGobject pgObject = getObject(columnIndex, PGobject.class);
+          try {
+            return OBJECT_MAPPER.readValue(pgObject.getValue(), HashMap.class);
+          } catch (IOException e) {
+            throw new PSQLException(GT.tr("Cannot convert PGobject to map: {0}", pgObject.getValue()),
+              PSQLState.INVALID_PARAMETER_VALUE);
+          }
+        }
         // if the backend doesn't know the type then coerce to String
         if (type.equals("unknown")) {
           return getString(columnIndex);
