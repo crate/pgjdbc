@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -992,6 +993,8 @@ final class ArrayEncoding {
             // this should never happen
             throw new IllegalStateException(e);
           }
+        } else if (array[i] instanceof Timestamp) {
+          PgArray.escapeArrayElement(sb, String.valueOf(((Timestamp) array[i]).getTime()));
         } else {
           PgArray.escapeArrayElement(sb, array[i].toString());
         }
