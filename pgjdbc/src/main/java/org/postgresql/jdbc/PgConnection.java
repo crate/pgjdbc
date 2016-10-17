@@ -8,6 +8,8 @@
 
 package org.postgresql.jdbc;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.Driver;
 import org.postgresql.PGNotification;
 import org.postgresql.PGProperty;
@@ -40,26 +42,7 @@ import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 
 import java.io.IOException;
-import java.sql.Array;
-import java.sql.Blob;
-import java.sql.CallableStatement;
-import java.sql.ClientInfoStatus;
-import java.sql.Clob;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.SQLFeatureNotSupportedException;
-import java.sql.NClob;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLClientInfoException;
-import java.sql.SQLException;
-import java.sql.SQLPermission;
-import java.sql.SQLWarning;
-import java.sql.SQLXML;
-import java.sql.Savepoint;
-import java.sql.Statement;
-import java.sql.Struct;
-import java.sql.Types;
+import java.sql.*;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1204,6 +1187,8 @@ public class PgConnection implements BaseConnection {
       Object o = java.lang.reflect.Array.get(elements, i);
       if (o == null) {
         sb.append("NULL");
+      } else if (o.getClass() == Timestamp.class) {
+        PgArray.escapeArrayElement(sb, String.valueOf(((Timestamp) o).getTime()));
       } else if (o.getClass().isArray()) {
         appendArray(sb, o, delim);
       } else {
@@ -1320,11 +1305,32 @@ public class PgConnection implements BaseConnection {
           PSQLState.INVALID_NAME);
     }
 
+    if (oid == Oid.JSON_ARRAY) {
+      try {
+        PGobject[] pGObjectArray = new PGobject[elements.length];
+        for (int i = 0; i < elements.length; i++) {
+          pGObjectArray[i] = objectToPGObject(elements[i]);
+        }
+        elements = pGObjectArray;
+      } catch (JsonProcessingException e) {
+        throw new PSQLException(
+                GT.tr("Unable to convert object to JSON."),
+                PSQLState.UNDEFINED_OBJECT);
+      }
+    }
+
     char delim = getTypeInfo().getArrayDelimiter(oid);
     StringBuilder sb = new StringBuilder();
     appendArray(sb, elements, delim);
 
     return makeArray(oid, sb.toString());
+  }
+
+  private PGobject objectToPGObject(Object object) throws JsonProcessingException, SQLException {
+    PGobject pgObject = new PGobject();
+    pgObject.setType("json");
+    pgObject.setValue(new ObjectMapper().writeValueAsString(object));
+    return pgObject;
   }
 
   public boolean isValid(int timeout) throws SQLException {
