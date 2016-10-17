@@ -1072,6 +1072,11 @@ class PgPreparedStatement extends PgStatement implements PreparedStatement {
           PSQLState.INVALID_PARAMETER_TYPE);
     }
 
+    // Pass in Timestamps as strings of time
+    if (oid == Oid.TIMESTAMP_ARRAY) {
+      oid = Oid.VARCHAR_ARRAY;
+    }
+
     if (x instanceof PgArray) {
       PgArray arr = (PgArray) x;
       if (arr.isBinary()) {
@@ -1306,37 +1311,7 @@ class PgPreparedStatement extends PgStatement implements PreparedStatement {
       return;
     }
 
-    int oid = Oid.UNSPECIFIED;
-
-    // Use UNSPECIFIED as a compromise to get both TIMESTAMP and TIMESTAMPTZ working.
-    // This is because you get this in a +1300 timezone:
-    //
-    // template1=# select '2005-01-01 15:00:00 +1000'::timestamptz;
-    // timestamptz
-    // ------------------------
-    // 2005-01-01 18:00:00+13
-    // (1 row)
-
-    // template1=# select '2005-01-01 15:00:00 +1000'::timestamp;
-    // timestamp
-    // ---------------------
-    // 2005-01-01 15:00:00
-    // (1 row)
-
-    // template1=# select '2005-01-01 15:00:00 +1000'::timestamptz::timestamp;
-    // timestamp
-    // ---------------------
-    // 2005-01-01 18:00:00
-    // (1 row)
-
-    // So we want to avoid doing a timestamptz -> timestamp conversion, as that
-    // will first convert the timestamptz to an equivalent time in the server's
-    // timezone (+1300, above), then turn it into a timestamp with the "wrong"
-    // time compared to the string we originally provided. But going straight
-    // to timestamp is OK as the input parser for timestamp just throws away
-    // the timezone part entirely. Since we don't know ahead of time what type
-    // we're actually dealing with, UNSPECIFIED seems the lesser evil, even if it
-    // does give more scope for type-mismatch errors being silently hidden.
+    int oid = Oid.VARCHAR;
 
     // If a PGTimestamp is used, we can define the OID explicitly.
     if (t instanceof PGTimestamp) {
@@ -1351,7 +1326,7 @@ class PgPreparedStatement extends PgStatement implements PreparedStatement {
     if (cal == null) {
       cal = getDefaultCalendar();
     }
-    bindString(i, connection.getTimestampUtils().toString(cal, t), oid);
+    bindString(i, String.valueOf(t.getTime()), oid);
   }
 
   //#if mvn.project.property.postgresql.jdbc.spec >= "JDBC4.2"

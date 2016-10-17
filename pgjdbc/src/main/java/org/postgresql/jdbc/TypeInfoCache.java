@@ -73,8 +73,7 @@ public class TypeInfoCache implements TypeInfo {
       {"numeric", Oid.NUMERIC, Types.NUMERIC, "java.math.BigDecimal", Oid.NUMERIC_ARRAY},
       {"float4", Oid.FLOAT4, Types.REAL, "java.lang.Float", Oid.FLOAT4_ARRAY},
       {"float8", Oid.FLOAT8, Types.DOUBLE, "java.lang.Double", Oid.FLOAT8_ARRAY},
-      {"char", Oid.CHAR, Types.CHAR, "java.lang.String", Oid.CHAR_ARRAY},
-      {"byte", Oid.INT2, Types.TINYINT, "java.lang.Byte", Oid.INT2_ARRAY},
+      {"byte", Oid.CHAR, Types.TINYINT, "java.lang.Byte", Oid.CHAR_ARRAY},
       {"bpchar", Oid.BPCHAR, Types.CHAR, "java.lang.String", Oid.BPCHAR_ARRAY},
       {"varchar", Oid.VARCHAR, Types.VARCHAR, "java.lang.String", Oid.VARCHAR_ARRAY},
       {"text", Oid.TEXT, Types.VARCHAR, "java.lang.String", Oid.TEXT_ARRAY},
@@ -153,7 +152,7 @@ public class TypeInfoCache implements TypeInfo {
     // the box datatype and it's not a JDBC core type.
     //
     Character delim = ',';
-    _arrayOidToDelimiter.put(oid, delim);
+    _arrayOidToDelimiter.put(arrayOid, delim);
 
     String pgArrayTypeName = pgTypeName + "[]";
     _pgNameToJavaClass.put(pgArrayTypeName, "java.sql.Array");
@@ -504,6 +503,10 @@ public class TypeInfoCache implements TypeInfo {
   public synchronized int getPGArrayElement(int oid) throws SQLException {
     if (oid == Oid.UNSPECIFIED) {
       return Oid.UNSPECIFIED;
+    }
+
+    if (oid == Oid.JSON) {
+      return Oid.JSON;
     }
 
     Integer pgType = _pgArrayToPgType.get(oid);

@@ -5,6 +5,7 @@
 
 package org.postgresql.jdbc;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.BaseStatement;
 import org.postgresql.core.Encoding;
@@ -162,6 +163,16 @@ public class PgArray implements java.sql.Array {
 
     if (fieldString == null) {
       return null;
+    }
+
+    if (oid == Oid.JSON) {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        return mapper.readValue(fieldString, Object[].class);
+      } catch (IOException e) {
+        throw new PSQLException(GT.tr("The returned JSON cannot be converted to an array: {0}", index),
+                PSQLState.DATA_ERROR);
+      }
     }
 
     buildArrayList();
@@ -562,7 +573,7 @@ public class PgArray implements java.sql.Array {
     final int type =
         connection.getTypeInfo().getSQLType(connection.getTypeInfo().getPGArrayElement(oid));
 
-    if (type == Types.BIT) {
+    if (type == Types.BIT || type == Types.BOOLEAN) {
       boolean[] pa = null; // primitive array
       Object[] oa = null; // objects array
 
@@ -726,6 +737,22 @@ public class PgArray implements java.sql.Array {
         Object v = input.get(index++);
         oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1) : v;
       }
+    } else if (type == Types.TINYINT) {
+      Object[] oa = null;
+      ret = oa = (dims > 1
+          ? (Object[]) java.lang.reflect.Array.newInstance(Byte.class, dimsLength)
+          : new Byte[count]);
+
+      for (; count > 0; count--) {
+        Object b = input.get(index++);
+
+        if (dims > 1 || useObjects) {
+          oa[length++] = b == null ? null
+                  : (dims > 1 ? buildArray((PgArrayList) b, 0, -1) : PgResultSet.toByte((String) b));
+        } else {
+          oa[length++] = b == null ? null : PgResultSet.toByte((String) b);
+        }
+      }
     } else if (type == Types.DATE) {
       Object[] oa = null;
       ret = oa = (dims > 1
@@ -803,7 +830,9 @@ public class PgArray implements java.sql.Array {
   }
 
   public String getBaseTypeName() throws SQLException {
-    buildArrayList();
+    if (oid != Oid.JSON) {
+      buildArrayList();
+    }
     int elementOID = connection.getTypeInfo().getPGArrayElement(oid);
     return connection.getTypeInfo().getPGType(elementOID);
   }

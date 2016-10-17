@@ -2950,6 +2950,14 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
     return 0; // SQL NULL
   }
 
+  public static Byte toByte(String s) throws SQLException {
+    if (s != null) {
+        s = s.trim();
+        return Byte.parseByte(s);
+    }
+    return 0; // SQL NULL
+  }
+
   private void initRowBuffer() {
     this_row = rows.get(current_row);
     // We only need a copy of the current row if we're going to
