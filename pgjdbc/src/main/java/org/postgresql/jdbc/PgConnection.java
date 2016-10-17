@@ -57,6 +57,8 @@ import org.postgresql.xml.DefaultPGXmlFactoryFactory;
 import org.postgresql.xml.LegacyInsecurePGXmlFactoryFactory;
 import org.postgresql.xml.PGXmlFactoryFactory;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.PolyNull;
 import org.checkerframework.dataflow.qual.Pure;
@@ -1539,7 +1541,27 @@ public class PgConnection implements BaseConnection {
   @Override
   public Array createArrayOf(String typeName, @Nullable Object @Nullable [] elements)
       throws SQLException {
+    checkClosed();
+    if (elements != null && getTypeInfo().getPGArrayType(typeName) == Oid.JSON_ARRAY) {
+      PGobject[] jsonElements = new PGobject[elements.length];
+      try {
+        for (int i = 0; i < elements.length; i++) {
+          jsonElements[i] = objectToPGObject(elements[i]);
+        }
+      } catch (JsonProcessingException e) {
+        throw new PSQLException(GT.tr("Unable to convert object to JSON."), PSQLState.UNDEFINED_OBJECT);
+      }
+      elements = jsonElements;
+    }
     return createArrayOf(typeName, (Object) elements);
+  }
+
+  private static PGobject objectToPGObject(@Nullable Object object)
+      throws JsonProcessingException, SQLException {
+    PGobject pgObject = new PGobject();
+    pgObject.setType("json");
+    pgObject.setValue(object == null ? "null" : new ObjectMapper().writeValueAsString(object));
+    return pgObject;
   }
 
   @Override

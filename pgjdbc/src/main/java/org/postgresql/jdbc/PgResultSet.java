@@ -3626,6 +3626,14 @@ public class PgResultSet implements ResultSet, PGRefCursorResultSet {
     return 0; // SQL NULL
   }
 
+  public static Byte toByte(@Nullable String s) throws SQLException {
+    if (s != null) {
+      s = s.trim();
+      return Byte.parseByte(s);
+    }
+    return 0; // SQL NULL
+  }
+
   @RequiresNonNull("rows")
   private void initRowBuffer() {
     thisRow = castNonNull(rows, "rows").get(currentRow);
