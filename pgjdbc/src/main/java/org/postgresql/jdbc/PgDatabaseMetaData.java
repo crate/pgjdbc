@@ -1307,13 +1307,11 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     fields[8] = new Field("SELF_REFERENCING_COL_NAME", Oid.VARCHAR);
     fields[9] = new Field("REF_GENERATION", Oid.VARCHAR);
 
-    StringBuilder sql = new StringBuilder(
-      "select schema_name, table_name " +
-      "from information_schema.tables "
-    )
-      .append(createInfoSchemaTableWhereClause(schemaPattern, tableNamePattern, null))
-      .append(" order by schema_name, table_name");
-    ResultSet rs = connection.createStatement().executeQuery(sql.toString());
+    String stmt = "select schema_name, table_name " +
+      "from information_schema.tables " +
+      createInfoSchemaTableWhereClause(schemaPattern, tableNamePattern, null) +
+      " order by schema_name, table_name";
+    ResultSet rs = connection.createStatement().executeQuery(stmt);
 
     List<byte[][]> tuples = new ArrayList<>();
     while (rs.next()) {
@@ -1359,9 +1357,6 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
         .append(connection.escapeString(columnNamePattern))
         .append("'");
     }
-
-    where.append(" and column_name not like '%[%]'");
-    where.append(" and column_name not like '%.%'");
 
     if (tableNamePattern != null) {
       where.append(" and table_name like '")
@@ -1558,14 +1553,12 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     fields[22] = new Field("IS_AUTOINCREMENT", Oid.VARCHAR);
     fields[23] = new Field("IS_GENERATEDCOLUMN", Oid.VARCHAR);
 
-    StringBuilder sql = new StringBuilder(
-      "select schema_name, table_name, column_name, data_type, ordinal_position " +
-      "from information_schema.columns "
-    )
-      .append(createInfoSchemaTableWhereClause(schemaPattern, tableNamePattern, columnNamePattern))
-      .append(" order by schema_name, table_name, ordinal_position");
-
-    ResultSet rs = connection.createStatement().executeQuery(sql.toString());
+    String stmt = "select schema_name, table_name, column_name, data_type, ordinal_position " +
+      "from information_schema.columns " +
+      createInfoSchemaTableWhereClause(schemaPattern, tableNamePattern, columnNamePattern) +
+      " and column_name not like '%[%]' and column_name not like '%.%'" +
+      " order by schema_name, table_name, ordinal_position";
+    ResultSet rs = connection.createStatement().executeQuery(stmt);
 
     List<byte[][]> tuples = new ArrayList<>();
     while (rs.next()) {
