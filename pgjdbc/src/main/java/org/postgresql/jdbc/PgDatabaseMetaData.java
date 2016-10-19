@@ -2241,66 +2241,48 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getPrimaryKeys(@Nullable String catalog, @Nullable String schema, String table)
       throws SQLException {
+    Field[] fields = new Field[6];
+    fields[0] = new Field("TABLE_CAT", Oid.VARCHAR);
+    fields[1] = new Field("TABLE_SCHEM", Oid.VARCHAR);
+    fields[2] = new Field("TABLE_NAME", Oid.VARCHAR);
+    fields[3] = new Field("COLUMN_NAME", Oid.VARCHAR);
+    fields[4] = new Field("KEY_SEQ", Oid.VARCHAR);
+    fields[5] = new Field("PK_NAME", Oid.VARCHAR);
 
-    String currentCatalog = connection.getCatalog();
-    Field[] f = new Field[6];
-    List<Tuple> v = new ArrayList<>(); // The new ResultSet tuple stuff
-
-    f[0] = new Field("TABLE_CAT", Oid.VARCHAR);
-    f[1] = new Field("TABLE_SCHEM", Oid.VARCHAR);
-    f[2] = new Field("TABLE_NAME", Oid.VARCHAR);
-    f[3] = new Field("COLUMN_NAME", Oid.VARCHAR);
-    f[4] = new Field("KEY_SEQ", Oid.INT4);
-    f[5] = new Field("PK_NAME", Oid.VARCHAR);
-
-    if (catalog != null && !catalog.equals(currentCatalog)) {
-      return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
-    }
-    StringBuilder sql = new StringBuilder();
-    sql.append(
-        // language=sql
-        "SELECT "
-            + "       result.TABLE_CAT AS \"TABLE_CAT\", "
-            + "       result.TABLE_SCHEM AS \"TABLE_SCHEM\", "
-            + "       result.TABLE_NAME AS \"TABLE_NAME\", "
-            + "       result.COLUMN_NAME AS \"COLUMN_NAME\", "
-            + "       result.KEY_SEQ AS \"KEY_SEQ\", "
-            + "       result.PK_NAME AS \"PK_NAME\""
-            + "FROM "
-            + "     (");
-    sql.append(
-        // pg_constraint.conkey lists the primary-key columns only: it excludes INCLUDE columns,
-        // which live in the backing index but are not part of the key, so no extra filtering by
-        // key count is needed.
-        // language=sql
-        "SELECT current_database() AS TABLE_CAT, n.nspname AS TABLE_SCHEM, "
-          + "  ct.relname AS TABLE_NAME, a.attname AS COLUMN_NAME, "
-          + "  (information_schema._pg_expandarray(con.conkey)).n AS KEY_SEQ, con.conname AS PK_NAME, "
-          + "  information_schema._pg_expandarray(con.conkey) AS KEYS, a.attnum AS A_ATTNUM "
-          + "FROM pg_catalog.pg_constraint con "
-          + "  JOIN pg_catalog.pg_class ct ON (con.conrelid = ct.oid) "
-          + "  JOIN pg_catalog.pg_namespace n ON (ct.relnamespace = n.oid) "
-          + "  JOIN pg_catalog.pg_attribute a ON (a.attrelid = ct.oid) "
-          + "WHERE con.contype = 'p' ");
-
-    List<String> args = new ArrayList<>(2);
+    StringBuilder sql = new StringBuilder("SELECT NULL AS TABLE_CAT, "
+        + "schema_name AS TABLE_SCHEM, "
+        + "table_name as TABLE_NAME, "
+        + "constraint_name AS COLUMN_NAMES, "
+        + "0 AS KEY_SEQ, "
+        + "NULL AS PK_NAME "
+        + "FROM information_schema.table_constraints "
+        + "WHERE '_id' != ANY(constraint_name) ");
     if (schema != null) {
-      sql.append(" AND n.nspname = ?");
-      args.add(schema);
+      sql.append("AND schema_name = '" + connection.escapeString(schema) + "' ");
     }
+    sql.append("AND table_name = '" + connection.escapeString(table) + "' ")
+        .append("ORDER BY TABLE_SCHEM, TABLE_NAME");
+    ResultSet rs = connection.createStatement().executeQuery(sql.toString());
 
-    if (table != null) {
-      sql.append(" AND ct.relname = ?");
-      args.add(table);
+    List<Tuple> tuples = new ArrayList<>();
+    while (rs.next()) {
+      byte @Nullable [] tableCat = rs.getBytes(1);
+      byte @Nullable [] tableSchem = rs.getBytes(2);
+      byte @Nullable [] tableName = rs.getBytes(3);
+      byte @Nullable [] pkName = rs.getBytes(6);
+      String[] pkColumsn = (String[]) castNonNull(rs.getArray(4)).getArray();
+      for (int i = 0; i < pkColumsn.length; i++) {
+        byte[] @Nullable [] tuple = new byte[fields.length][];
+        tuple[0] = tableCat;
+        tuple[1] = tableSchem;
+        tuple[2] = tableName;
+        tuple[3] = connection.encodeString(pkColumsn[i]);
+        tuple[4] = connection.encodeString(Integer.toString(i));
+        tuple[5] = pkName;
+        tuples.add(new Tuple(tuple));
+      }
     }
-
-    sql.append(
-        " ) result"
-            + " where "
-            + " result.A_ATTNUM = (result.KEYS).x ");
-    sql.append(" ORDER BY result.table_name, result.pk_name, result.key_seq");
-
-    return executeMetadataStatement(sql.toString(), args);
+    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 
   /*
