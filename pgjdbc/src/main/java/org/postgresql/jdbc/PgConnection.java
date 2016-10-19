@@ -106,6 +106,8 @@ public class PgConnection implements BaseConnection {
 
   private TypeInfo _typeCache;
 
+  private boolean strict = false;
+
   private boolean disableColumnSanitiser = false;
 
   // Default statement prepare threshold.
@@ -186,6 +188,10 @@ public class PgConnection implements BaseConnection {
     // standard out if no other printwriter is set
 
     int logLevel = Driver.getLogLevel();
+
+    if (PGProperty.STRICT.getBoolean(info)) {
+      strict = true;
+    }
 
     String connectionLogLevel = PGProperty.LOG_LEVEL.getSetString(info);
     if (connectionLogLevel != null) {
@@ -751,16 +757,10 @@ public class PgConnection implements BaseConnection {
 
   public void setAutoCommit(boolean autoCommit) throws SQLException {
     checkClosed();
-
-    if (this.autoCommit == autoCommit) {
-      return;
+    if (!autoCommit && strict) {
+      throw new SQLFeatureNotSupportedException("The auto-commit mode cannot be disabled. "+
+                                                "The Crate JDBC driver does not support manual commit.");
     }
-
-    if (!this.autoCommit) {
-      commit();
-    }
-
-    this.autoCommit = autoCommit;
   }
 
   public boolean getAutoCommit() throws SQLException {
@@ -791,13 +791,9 @@ public class PgConnection implements BaseConnection {
   public void commit() throws SQLException {
     checkClosed();
 
-    if (autoCommit) {
-      throw new PSQLException(GT.tr("Cannot commit when autoCommit is enabled."),
-          PSQLState.NO_ACTIVE_SQL_TRANSACTION);
-    }
-
-    if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
-      executeTransactionCommand(commitQuery);
+    if (autoCommit && strict) {
+      throw new SQLFeatureNotSupportedException("The commit operation is not allowed. " +
+            "The Crate JDBC driver does not support manual commit.");
     }
   }
 
@@ -811,15 +807,7 @@ public class PgConnection implements BaseConnection {
 
   public void rollback() throws SQLException {
     checkClosed();
-
-    if (autoCommit) {
-      throw new PSQLException(GT.tr("Cannot rollback when autoCommit is enabled."),
-          PSQLState.NO_ACTIVE_SQL_TRANSACTION);
-    }
-
-    if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
-      executeTransactionCommand(rollbackQuery);
-    }
+    throwUnsupportedIfStrictMode("Rollback is not supported.");
   }
 
   public TransactionState getTransactionState() {
@@ -1570,47 +1558,18 @@ public class PgConnection implements BaseConnection {
 
   public Savepoint setSavepoint(String name) throws SQLException {
     checkClosed();
-    if (!haveMinimumServerVersion(ServerVersion.v8_0)) {
-      throw new PSQLException(GT.tr("Server versions prior to 8.0 do not support savepoints."),
-          PSQLState.NOT_IMPLEMENTED);
-    }
-    if (getAutoCommit()) {
-      throw new PSQLException(GT.tr("Cannot establish a savepoint in auto-commit mode."),
-          PSQLState.NO_ACTIVE_SQL_TRANSACTION);
-    }
-
-    PSQLSavepoint savepoint = new PSQLSavepoint(name);
-
-    // Note we can't use execSQLUpdate because we don't want
-    // to suppress BEGIN.
-    Statement stmt = createStatement();
-    stmt.executeUpdate("SAVEPOINT " + savepoint.getPGName());
-    stmt.close();
-
-    return savepoint;
+    throwUnsupportedIfStrictMode("Savepoint is not supported.");
+    return null;
   }
 
   public void rollback(Savepoint savepoint) throws SQLException {
     checkClosed();
-    if (!haveMinimumServerVersion(ServerVersion.v8_0)) {
-      throw new PSQLException(GT.tr("Server versions prior to 8.0 do not support savepoints."),
-          PSQLState.NOT_IMPLEMENTED);
-    }
-
-    PSQLSavepoint pgSavepoint = (PSQLSavepoint) savepoint;
-    execSQLUpdate("ROLLBACK TO SAVEPOINT " + pgSavepoint.getPGName());
+    throwUnsupportedIfStrictMode("Rollback is not supported.");
   }
 
   public void releaseSavepoint(Savepoint savepoint) throws SQLException {
     checkClosed();
-    if (!haveMinimumServerVersion(ServerVersion.v8_0)) {
-      throw new PSQLException(GT.tr("Server versions prior to 8.0 do not support savepoints."),
-          PSQLState.NOT_IMPLEMENTED);
-    }
-
-    PSQLSavepoint pgSavepoint = (PSQLSavepoint) savepoint;
-    execSQLUpdate("RELEASE SAVEPOINT " + pgSavepoint.getPGName());
-    pgSavepoint.invalidate();
+    throwUnsupportedIfStrictMode("Savepoint is not supported.");
   }
 
   public Statement createStatement(int resultSetType, int resultSetConcurrency)
@@ -1668,5 +1627,11 @@ public class PgConnection implements BaseConnection {
       // If composite query is given, just ignore "generated keys" arguments
     }
     return ps;
+  }
+
+  private void throwUnsupportedIfStrictMode(String message) throws SQLFeatureNotSupportedException {
+    if (strict) {
+      throw new SQLFeatureNotSupportedException(message);
+    }
   }
 }

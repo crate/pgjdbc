@@ -120,6 +120,11 @@ public enum PGProperty {
   READ_ONLY("readOnly", "false", "Puts this connection in read-only mode"),
 
   /**
+   * Puts this connection in strict mode.
+   */
+  STRICT("strict", "false", "Force driver to be compliant with the JDBC specification. Crate specific"),
+
+  /**
    * Comma separated list of types to enable binary transfer. Either OID numbers or names
    */
   BINARY_TRANSFER_ENABLE("binaryTransferEnable", "",
