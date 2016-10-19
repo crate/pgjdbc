@@ -162,7 +162,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
    * @exception SQLException if a database access error occurs
    */
   public String getDatabaseProductName() throws SQLException {
-    return "PostgreSQL";
+    return "Crate";
   }
 
   public String getDatabaseProductVersion() throws SQLException {
