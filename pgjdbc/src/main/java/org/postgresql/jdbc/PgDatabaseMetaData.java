@@ -1446,45 +1446,33 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getSchemas() throws SQLException {
-    return getSchemas(getJDBCMajorVersion(), null, null);
+    return getSchemas(null, null);
   }
 
-  protected ResultSet getSchemas(int jdbcVersion, String catalog, String schemaPattern)
-      throws SQLException {
-    String sql;
-    // Show only the users temp schemas, but not other peoples
-    // because they can't access any objects in them.
-    if (connection.haveMinimumServerVersion(ServerVersion.v7_3)) {
-      // 7.3 can't extract elements from an array returned by
-      // a function, so we've got to coerce it to text and then
-      // hack it up with a regex.
-      String tempSchema =
-          "substring(textin(array_out(pg_catalog.current_schemas(true))) from '{(pg_temp_[0-9]+),')";
-      if (connection.haveMinimumServerVersion(ServerVersion.v7_4)) {
-        tempSchema = "(pg_catalog.current_schemas(true))[1]";
-      }
-      sql = "SELECT nspname AS TABLE_SCHEM ";
-      if (jdbcVersion >= 3) {
-        sql += ", NULL AS TABLE_CATALOG ";
-      }
-      sql +=
-          " FROM pg_catalog.pg_namespace WHERE nspname <> 'pg_toast' AND (nspname !~ '^pg_temp_' OR nspname = "
-              + tempSchema + ") AND (nspname !~ '^pg_toast_temp_' OR nspname = replace("
-              + tempSchema + ", 'pg_temp_', 'pg_toast_temp_')) ";
-      if (schemaPattern != null && !"".equals(schemaPattern)) {
-        sql += " AND nspname LIKE " + escapeQuotes(schemaPattern);
-      }
-      sql += " ORDER BY TABLE_SCHEM";
-    } else {
-      sql = "SELECT ''::text AS TABLE_SCHEM ";
-      if (jdbcVersion >= 3) {
-        sql += ", NULL AS TABLE_CATALOG ";
-      }
-      if (schemaPattern != null) {
-        sql += " WHERE ''::text LIKE " + escapeQuotes(schemaPattern);
-      }
+  public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
+    boolean hasSchemata = getDatabaseMinorVersion() > 45;
+    String table = (hasSchemata ? "information_schema.schemata" : "information_schema.tables");
+    StringBuilder stmt = new StringBuilder("select schema_name from " + table);
+    if (schemaPattern != null) {
+      stmt.append(" where schema_name like '")
+          .append(connection.escapeString(schemaPattern))
+          .append("'");
     }
-    return createMetaDataStatement().executeQuery(sql);
+    if (!hasSchemata) {
+      stmt.append(" group by schema_name");
+    }
+    stmt.append(" order by schema_name");
+
+    ResultSet rs = connection.createStatement().executeQuery(stmt.toString());
+    Field[] fields = new Field[2];
+    fields[0] = new Field("TABLE_SCHEM", Oid.VARCHAR);
+    fields[1] = new Field("TABLE_CAT", Oid.VARCHAR);
+
+    List<byte[][]> tuples = new ArrayList<>();
+    while (rs.next()) {
+      tuples.add(new byte[][] {rs.getBytes("schema_name"), null});
+    }
+    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 
   /**
@@ -2978,10 +2966,6 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   public RowIdLifetime getRowIdLifetime() throws SQLException {
     throw org.postgresql.Driver.notImplemented(this.getClass(), "getRowIdLifetime()");
-  }
-
-  public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-    return getSchemas(getJDBCMajorVersion(), catalog, schemaPattern);
   }
 
   public boolean supportsStoredFunctionsUsingCallSyntax() throws SQLException {
