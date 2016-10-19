@@ -136,7 +136,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
    */
   @Override
   public String getDatabaseProductName() throws SQLException {
-    return "PostgreSQL";
+    return "Crate";
   }
 
   @Override
