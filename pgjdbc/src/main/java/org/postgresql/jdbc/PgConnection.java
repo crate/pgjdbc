@@ -46,6 +46,7 @@ import java.sql.ClientInfoStatus;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -100,6 +101,8 @@ public class PgConnection implements BaseConnection {
   private final Query rollbackQuery;
 
   private final TypeInfo _typeCache;
+
+  private boolean strict = false;
 
   private boolean disableColumnSanitiser = false;
 
@@ -183,6 +186,11 @@ public class PgConnection implements BaseConnection {
     LOGGER.log(Level.FINE, org.postgresql.util.DriverInfo.DRIVER_FULL_NAME);
 
     this.creatingURL = url;
+
+    if (PGProperty.STRICT.getBoolean(info)) {
+      strict = true;
+    }
+
 
     setDefaultFetchSize(PGProperty.DEFAULT_ROW_FETCH_SIZE.getInt(info));
 
@@ -725,17 +733,10 @@ public class PgConnection implements BaseConnection {
   @Override
   public void setAutoCommit(boolean autoCommit) throws SQLException {
     checkClosed();
-
-    if (this.autoCommit == autoCommit) {
-      return;
+    if (!autoCommit && strict) {
+      throw new SQLFeatureNotSupportedException("The auto-commit mode cannot be disabled. "+
+                                                "The Crate JDBC driver does not support manual commit.");
     }
-
-    if (!this.autoCommit) {
-      commit();
-    }
-
-    this.autoCommit = autoCommit;
-    LOGGER.log(Level.FINE, "  setAutoCommit = {0}", autoCommit);
   }
 
   @Override
@@ -768,13 +769,9 @@ public class PgConnection implements BaseConnection {
   public void commit() throws SQLException {
     checkClosed();
 
-    if (autoCommit) {
-      throw new PSQLException(GT.tr("Cannot commit when autoCommit is enabled."),
-          PSQLState.NO_ACTIVE_SQL_TRANSACTION);
-    }
-
-    if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
-      executeTransactionCommand(commitQuery);
+    if (autoCommit && strict) {
+      throw new SQLFeatureNotSupportedException("The commit operation is not allowed. " +
+            "The Crate JDBC driver does not support manual commit.");
     }
   }
 
@@ -789,15 +786,7 @@ public class PgConnection implements BaseConnection {
   @Override
   public void rollback() throws SQLException {
     checkClosed();
-
-    if (autoCommit) {
-      throw new PSQLException(GT.tr("Cannot rollback when autoCommit is enabled."),
-          PSQLState.NO_ACTIVE_SQL_TRANSACTION);
-    }
-
-    if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
-      executeTransactionCommand(rollbackQuery);
-    }
+    throwUnsupportedIfStrictMode("Rollback is not supported.");
   }
 
   public TransactionState getTransactionState() {
@@ -1633,38 +1622,20 @@ public class PgConnection implements BaseConnection {
   @Override
   public Savepoint setSavepoint(String name) throws SQLException {
     checkClosed();
-
-    if (getAutoCommit()) {
-      throw new PSQLException(GT.tr("Cannot establish a savepoint in auto-commit mode."),
-          PSQLState.NO_ACTIVE_SQL_TRANSACTION);
-    }
-
-    PSQLSavepoint savepoint = new PSQLSavepoint(name);
-
-    // Note we can't use execSQLUpdate because we don't want
-    // to suppress BEGIN.
-    Statement stmt = createStatement();
-    stmt.executeUpdate("SAVEPOINT " + savepoint.getPGName());
-    stmt.close();
-
-    return savepoint;
+    throwUnsupportedIfStrictMode("Savepoint is not supported.");
+    return null;
   }
 
   @Override
   public void rollback(Savepoint savepoint) throws SQLException {
     checkClosed();
-
-    PSQLSavepoint pgSavepoint = (PSQLSavepoint) savepoint;
-    execSQLUpdate("ROLLBACK TO SAVEPOINT " + pgSavepoint.getPGName());
+    throwUnsupportedIfStrictMode("Rollback is not supported.");
   }
 
   @Override
   public void releaseSavepoint(Savepoint savepoint) throws SQLException {
     checkClosed();
-
-    PSQLSavepoint pgSavepoint = (PSQLSavepoint) savepoint;
-    execSQLUpdate("RELEASE SAVEPOINT " + pgSavepoint.getPGName());
-    pgSavepoint.invalidate();
+    throwUnsupportedIfStrictMode("Savepoint is not supported.");
   }
 
   @Override
@@ -1728,5 +1699,11 @@ public class PgConnection implements BaseConnection {
       // If composite query is given, just ignore "generated keys" arguments
     }
     return ps;
+  }
+
+  private void throwUnsupportedIfStrictMode(String message) throws SQLFeatureNotSupportedException {
+    if (strict) {
+      throw new SQLFeatureNotSupportedException(message);
+    }
   }
 }
