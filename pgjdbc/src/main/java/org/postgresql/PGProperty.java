@@ -888,6 +888,14 @@ public enum PGProperty {
       "The Windows SSPI service class for SPN"),
 
   /**
+   * Puts this connection in strict mode.
+   */
+  STRICT(
+      "strict",
+      "false",
+      "Force driver to be compliant with the JDBC specification. Crate specific"),
+
+  /**
    * Bind String to either {@code unspecified} or {@code varchar}. Default is {@code varchar} for
    * 8.0+ backends.
    */

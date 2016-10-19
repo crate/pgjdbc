@@ -78,6 +78,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLPermission;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
@@ -175,6 +176,8 @@ public class PgConnection implements BaseConnection {
   private final CachedQuery setSessionNotReadOnly;
 
   private final TypeInfo typeCache;
+
+  private final boolean strict;
 
   private boolean disableColumnSanitiser;
 
@@ -281,6 +284,7 @@ public class PgConnection implements BaseConnection {
     this.classLoaderStrategy = ClassLoaderStrategy.of(info);
 
     this.readOnlyBehavior = getReadOnlyBehavior(PGProperty.READ_ONLY_MODE.getOrDefault(info));
+    this.strict = PGProperty.STRICT.getBoolean(info);
 
     setDefaultFetchSize(PGProperty.DEFAULT_ROW_FETCH_SIZE.getInt(info));
 
@@ -977,32 +981,10 @@ public class PgConnection implements BaseConnection {
   @Override
   public void setAutoCommit(boolean autoCommit) throws SQLException {
     checkClosed();
-
-    if (this.autoCommit == autoCommit) {
-      return;
+    if (!autoCommit && strict) {
+      throw new SQLFeatureNotSupportedException("The auto-commit mode cannot be disabled. "
+          + "The Crate JDBC driver does not support manual commit.");
     }
-
-    if (!this.autoCommit) {
-      commit();
-    }
-
-    // if the connection is read only, we need to make sure session settings are
-    // correct when autocommit status changed
-    if (this.readOnly && readOnlyBehavior == ReadOnlyBehavior.always) {
-      // if we are turning on autocommit, we need to set session
-      // to read only
-      if (autoCommit) {
-        this.autoCommit = true;
-        execSQLUpdate(setSessionReadOnly);
-      } else {
-        // if we are turning auto commit off, we need to
-        // disable session
-        execSQLUpdate(setSessionNotReadOnly);
-      }
-    }
-
-    this.autoCommit = autoCommit;
-    LOGGER.log(Level.FINE, "  setAutoCommit = {0}", autoCommit);
   }
 
   @Override
@@ -1035,13 +1017,9 @@ public class PgConnection implements BaseConnection {
   public void commit() throws SQLException {
     checkClosed();
 
-    if (autoCommit) {
-      throw new PSQLException(GT.tr("Cannot commit when autoCommit is enabled."),
-          PSQLState.NO_ACTIVE_SQL_TRANSACTION);
-    }
-
-    if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
-      executeTransactionCommand(commitQuery);
+    if (autoCommit && strict) {
+      throw new SQLFeatureNotSupportedException("The commit operation is not allowed. "
+          + "The Crate JDBC driver does not support manual commit.");
     }
   }
 
@@ -1055,18 +1033,7 @@ public class PgConnection implements BaseConnection {
   @Override
   public void rollback() throws SQLException {
     checkClosed();
-
-    if (autoCommit) {
-      throw new PSQLException(GT.tr("Cannot rollback when autoCommit is enabled."),
-          PSQLState.NO_ACTIVE_SQL_TRANSACTION);
-    }
-
-    if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
-      executeTransactionCommand(rollbackQuery);
-    } else {
-      // just log for debugging
-      LOGGER.log(Level.FINE, "Rollback requested but no transaction in progress");
-    }
+    throwUnsupportedIfStrictMode("Rollback is not supported.");
   }
 
   @Override
@@ -1875,40 +1842,23 @@ public class PgConnection implements BaseConnection {
   }
 
   @Override
+  @SuppressWarnings("nullness:return")
   public Savepoint setSavepoint(String name) throws SQLException {
     checkClosed();
-
-    if (getAutoCommit()) {
-      throw new PSQLException(GT.tr("Cannot establish a savepoint in auto-commit mode."),
-          PSQLState.NO_ACTIVE_SQL_TRANSACTION);
-    }
-
-    PSQLSavepoint savepoint = new PSQLSavepoint(name);
-
-    // Note we can't use execSQLUpdate because we don't want
-    // to suppress BEGIN.
-    Statement stmt = createStatement();
-    stmt.executeUpdate("SAVEPOINT " + savepoint.getPGName());
-    stmt.close();
-
-    return savepoint;
+    throwUnsupportedIfStrictMode("Savepoint is not supported.");
+    return null;
   }
 
   @Override
   public void rollback(Savepoint savepoint) throws SQLException {
     checkClosed();
-
-    PSQLSavepoint pgSavepoint = (PSQLSavepoint) savepoint;
-    execSQLUpdate("ROLLBACK TO SAVEPOINT " + pgSavepoint.getPGName());
+    throwUnsupportedIfStrictMode("Rollback is not supported.");
   }
 
   @Override
   public void releaseSavepoint(Savepoint savepoint) throws SQLException {
     checkClosed();
-
-    PSQLSavepoint pgSavepoint = (PSQLSavepoint) savepoint;
-    execSQLUpdate("RELEASE SAVEPOINT " + pgSavepoint.getPGName());
-    pgSavepoint.invalidate();
+    throwUnsupportedIfStrictMode("Savepoint is not supported.");
   }
 
   @Override
@@ -2025,5 +1975,11 @@ public class PgConnection implements BaseConnection {
     }
     this.xmlFactoryFactory = xmlFactoryFactory;
     return xmlFactoryFactory;
+  }
+
+  private void throwUnsupportedIfStrictMode(String message) throws SQLFeatureNotSupportedException {
+    if (strict) {
+      throw new SQLFeatureNotSupportedException(message);
+    }
   }
 }
