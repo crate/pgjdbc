@@ -1591,31 +1591,29 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getSchemas(@Nullable String catalog, @Nullable String schemaPattern)
       throws SQLException {
-    if (catalog != null && !catalog.equals(connection.getCatalog())) {
-      int columns = 2;
-      Field[] f = new Field[columns];
-      List<Tuple> v = new ArrayList<>(); // The new ResultSet tuple stuff
-      f[0] = new Field("TABLE_CAT", Oid.VARCHAR);
-      f[1] = new Field("TABLE_SCHEM", Oid.VARCHAR);
-      return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
-    }
-    StringBuilder sql = new StringBuilder(
-        // langauge=sql
-        "SELECT nspname AS \"TABLE_SCHEM\", current_database() AS \"TABLE_CATALOG\" FROM pg_catalog.pg_namespace "
-          + " WHERE nspname <> 'pg_toast' AND (nspname !~ '^pg_temp_' "
-          + " OR nspname = (pg_catalog.current_schemas(true))[1]) AND (nspname !~ '^pg_toast_temp_' "
-          + " OR nspname = replace((pg_catalog.current_schemas(true))[1], 'pg_temp_', 'pg_toast_temp_')) ");
-    List<String> args = new ArrayList<>(1);
+    boolean hasSchemata = getDatabaseMinorVersion() > 45;
+    String table = hasSchemata ? "information_schema.schemata" : "information_schema.tables";
+    StringBuilder stmt = new StringBuilder("select schema_name from " + table);
     if (schemaPattern != null) {
-      sql.append(" AND nspname LIKE ?");
-      args.add(schemaPattern);
+      stmt.append(" where schema_name like '")
+          .append(connection.escapeString(schemaPattern))
+          .append("'");
     }
-    if (connection.getHideUnprivilegedObjects()) {
-      sql.append(" AND has_schema_privilege(nspname, 'USAGE, CREATE')");
+    if (!hasSchemata) {
+      stmt.append(" group by schema_name");
     }
-    sql.append(" ORDER BY \"TABLE_SCHEM\"");
+    stmt.append(" order by schema_name");
 
-    return executeMetadataStatement(sql.toString(), args);
+    ResultSet rs = connection.createStatement().executeQuery(stmt.toString());
+    Field[] fields = new Field[2];
+    fields[0] = new Field("TABLE_SCHEM", Oid.VARCHAR);
+    fields[1] = new Field("TABLE_CAT", Oid.VARCHAR);
+
+    List<Tuple> tuples = new ArrayList<>();
+    while (rs.next()) {
+      tuples.add(new Tuple(new byte[] @Nullable [] {rs.getBytes("schema_name"), null}));
+    }
+    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 
   @Override
