@@ -1403,17 +1403,29 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-    String sql;
-    sql = "SELECT nspname AS TABLE_SCHEM, NULL AS TABLE_CATALOG FROM pg_catalog.pg_namespace "
-          + " WHERE nspname <> 'pg_toast' AND (nspname !~ '^pg_temp_' "
-          + " OR nspname = (pg_catalog.current_schemas(true))[1]) AND (nspname !~ '^pg_toast_temp_' "
-          + " OR nspname = replace((pg_catalog.current_schemas(true))[1], 'pg_temp_', 'pg_toast_temp_')) ";
-    if (schemaPattern != null && !schemaPattern.isEmpty()) {
-      sql += " AND nspname LIKE " + escapeQuotes(schemaPattern);
+    boolean hasSchemata = getDatabaseMinorVersion() > 45;
+    String table = (hasSchemata ? "information_schema.schemata" : "information_schema.tables");
+    StringBuilder stmt = new StringBuilder("select schema_name from " + table);
+    if (schemaPattern != null) {
+      stmt.append(" where schema_name like '")
+          .append(connection.escapeString(schemaPattern))
+          .append("'");
     }
-    sql += " ORDER BY TABLE_SCHEM";
+    if (!hasSchemata) {
+      stmt.append(" group by schema_name");
+    }
+    stmt.append(" order by schema_name");
 
-    return createMetaDataStatement().executeQuery(sql);
+    ResultSet rs = connection.createStatement().executeQuery(stmt.toString());
+    Field[] fields = new Field[2];
+    fields[0] = new Field("TABLE_SCHEM", Oid.VARCHAR);
+    fields[1] = new Field("TABLE_CAT", Oid.VARCHAR);
+
+    List<byte[][]> tuples = new ArrayList<>();
+    while (rs.next()) {
+      tuples.add(new byte[][] {rs.getBytes("schema_name"), null});
+    }
+    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 
   /**
