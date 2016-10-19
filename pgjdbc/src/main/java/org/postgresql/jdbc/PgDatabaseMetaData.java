@@ -2178,7 +2178,6 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     }
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
-  }
 
   /**
    * @param primaryCatalog primary catalog
