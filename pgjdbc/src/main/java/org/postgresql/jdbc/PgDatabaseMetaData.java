@@ -33,16 +33,6 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     this.connection = conn;
   }
 
-
-  private static final String keywords = "abort,acl,add,aggregate,append,archive,"
-      + "arch_store,backward,binary,boolean,change,cluster,"
-      + "copy,database,delimiter,delimiters,do,extend,"
-      + "explain,forward,heavy,index,inherits,isnull,"
-      + "light,listen,load,merge,nothing,notify,"
-      + "notnull,oids,purge,rename,replace,retrieve,"
-      + "returns,rule,recipe,setof,stdin,stdout,store,"
-      + "vacuum,verbose,version";
-
   protected final PgConnection connection; // The connection association
 
   private int NAMEDATALEN = 0; // length for name datatype
@@ -256,23 +246,37 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     return "\"";
   }
 
-  /**
-   * {@inheritDoc}
-   *
-   * <p>
-   * Within PostgreSQL, the keywords are found in src/backend/parser/keywords.c
-   *
-   * <p>
-   * For SQL Keywords, I took the list provided at
-   * <a href="http://web.dementia.org/~shadow/sql/sql3bnf.sep93.txt"> http://web.dementia.org/~
-   * shadow/sql/sql3bnf.sep93.txt</a> which is for SQL3, not SQL-92, but it is close enough for this
-   * purpose.
-   *
-   * @return a comma separated list of keywords we use
-   * @throws SQLException if a database access error occurs
-   */
   public String getSQLKeywords() throws SQLException {
-    return keywords;
+    return "alias,all,alter,analyzer,and,any,array,as,asc," +
+      "always,array,add," +
+      "bernoulli,between,blob,boolean,by,byte,begin," +
+      "case,cast,catalogs,char_filters,clustered,coalesce,columns," +
+      "constraint,copy,create,cross,current,current_date,current_time," +
+      "current_timestamp,current_schema, column," +
+      "date,day,delete,desc,describe,directory,distinct,distributed," +
+      "double,drop,dynamic,delete,duplicate,default," +
+      "else,end,escape,except,exists,explain,extends,extract," +
+      "false,first,float,following,for,format,from,full,fulltext,functions," +
+      "graphviz,group,geo_point,geo_shape,global,generated," +
+      "having,hour," +
+      "if,ignored,in,index,inner,insert,int,integer,intersect,interval," +
+      "into,ip,is,isolation," +
+      "join," +
+      "last,left,like,limit,logical,long,local,level," +
+      "materialized,minute,month,match," +
+      "natural,not,null,nulls," +
+      "object,off,offset,on,or,order,outer,over,optmize,only," +
+      "partition,partitioned,partitions,plain,preceding,primary_key," +
+      "range,recursive,refresh,reset,right,row,rows,repository,restore," +
+      "schemas,second,select,set,shards,short,show,some,stratify," +
+      "strict,string_type,substring,system,select,snapshot,session," +
+      "table,tables,tablesample,text,then,time,timestamp,to,tokenizer," +
+      "token_filters,true,type,try_cast,transaction,tablesample," +
+      "transient," +
+      "unbounded,union,update,using," +
+      "values,view," +
+      "when,where,with," +
+      "year";
   }
 
   public String getNumericFunctions() throws SQLException {
