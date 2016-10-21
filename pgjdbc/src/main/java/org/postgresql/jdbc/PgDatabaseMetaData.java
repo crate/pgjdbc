@@ -35,7 +35,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -1396,18 +1395,11 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public ResultSet getTableTypes() throws SQLException {
-    String[] types = tableTypeClauses.keySet().toArray(new String[0]);
-    Arrays.sort(types);
-
     Field[] f = new Field[1];
     List<Tuple> v = new ArrayList<>();
     f[0] = new Field("TABLE_TYPE", Oid.VARCHAR);
-    for (String type : types) {
-      byte[] @Nullable [] tuple = new byte[1][];
-      tuple[0] = connection.encodeString(type);
-      v.add(new Tuple(tuple));
-    }
-
+    v.add(new Tuple(new byte[][] {connection.encodeString("SYSTEM TABLE")}));
+    v.add(new Tuple(new byte[][] {connection.encodeString("TABLE")}));
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
   }
 
