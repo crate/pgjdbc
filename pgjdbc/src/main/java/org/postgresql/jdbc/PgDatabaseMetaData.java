@@ -40,7 +40,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -2873,98 +2872,8 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getUDTs(@Nullable String catalog, @Nullable String schemaPattern,
       @Nullable String typeNamePattern, int @Nullable [] types) throws SQLException {
-
-    String currentCatalog = connection.getCatalog();
-    Field[] f = new Field[7];
-    List<Tuple> v = new ArrayList<>(); // The new ResultSet tuple stuff
-
-    f[0] = new Field("TYPE_CAT", Oid.VARCHAR);
-    f[1] = new Field("TYPE_SCHEM", Oid.VARCHAR);
-    f[2] = new Field("TYPE_NAME", Oid.VARCHAR);
-    f[3] = new Field("CLASS_NAME", Oid.VARCHAR);
-    f[4] = new Field("DATA_TYPE", Oid.INT4);
-    f[5] = new Field("REMARKS", Oid.VARCHAR);
-    f[6] = new Field("BASE_TYPE", Oid.INT2);
-
-    if (catalog != null && !catalog.equals(currentCatalog)) {
-      return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
-    }
-
-    String sql = "select "
-        + "current_database() as \"TYPE_CAT\", n.nspname as \"TYPE_SCHEM\", t.typname as \"TYPE_NAME\", null as \"CLASS_NAME\", "
-        + "CASE WHEN t.typtype='c' then " + Types.STRUCT + " else "
-        + Types.DISTINCT
-        + " end as \"DATA_TYPE\", pg_catalog.obj_description(t.oid, 'pg_type')  "
-        + "as \"REMARKS\", CASE WHEN t.typtype = 'd' then  (select CASE";
-    TypeInfo typeInfo = connection.getTypeInfo();
-
-    StringBuilder sqlwhen = new StringBuilder();
-    for (Iterator<Integer> i = typeInfo.getPGTypeOidsWithSQLTypes(); i.hasNext(); ) {
-      Integer typOid = i.next();
-      // NB: Java Integers are signed 32-bit integers, but oids are unsigned 32-bit integers.
-      // We must therefore map it to a positive long value before writing it into the query,
-      // or we'll be unable to correctly handle ~ half of the oid space.
-      long longTypOid = typeInfo.intOidToLong(typOid);
-      int sqlType = typeInfo.getSQLType(typOid);
-
-      sqlwhen.append(" when base_type.oid = ").append(longTypOid).append(" then ").append(sqlType);
-    }
-    sql += sqlwhen.toString();
-
-    sql += " else " + Types.OTHER + " end from pg_type base_type where base_type.oid=t.typbasetype) "
-        + "else null end as \"BASE_TYPE\" "
-        + "from pg_catalog.pg_type t, pg_catalog.pg_namespace n where t.typnamespace = n.oid and n.nspname != 'pg_catalog' and n.nspname != 'pg_toast'";
-
-    StringBuilder toAdd = new StringBuilder();
-    if (types != null) {
-      toAdd.append(" and (false ");
-      for (int type : types) {
-        if (type == Types.STRUCT) {
-          toAdd.append(" or t.typtype = 'c'");
-        } else if (type == Types.DISTINCT) {
-          toAdd.append(" or t.typtype = 'd'");
-        }
-      }
-      toAdd.append(" ) ");
-    } else {
-      toAdd.append(" and t.typtype IN ('c','d') ");
-    }
-    // spec says that if typeNamePattern is a fully qualified name
-    // then the schema and catalog are ignored
-
-    if (typeNamePattern != null) {
-      // search for qualifier
-      int firstQualifier = typeNamePattern.indexOf('.');
-      int secondQualifier = typeNamePattern.lastIndexOf('.');
-
-      if (firstQualifier != -1) {
-        // if one of them is -1 they both will be
-        if (firstQualifier != secondQualifier) {
-          // we have a catalog.schema.typename, ignore catalog
-          schemaPattern = typeNamePattern.substring(firstQualifier + 1, secondQualifier);
-        } else {
-          // we just have a schema.typename
-          schemaPattern = typeNamePattern.substring(0, firstQualifier);
-        }
-        // strip out just the typeName
-        typeNamePattern = typeNamePattern.substring(secondQualifier + 1);
-      }
-      toAdd.append(" and t.typname like ").append(escapeQuotes(typeNamePattern));
-    }
-
-    // schemaPattern may have been modified above
-    if (schemaPattern != null) {
-      toAdd.append(" and n.nspname like ").append(escapeQuotes(schemaPattern));
-    }
-    sql += toAdd.toString();
-
-    if (connection.getHideUnprivilegedObjects()
-        && connection.haveMinimumServerVersion(ServerVersion.v9_2)) {
-      sql += " AND has_type_privilege(t.oid, 'USAGE')";
-    }
-
-    sql += " order by \"DATA_TYPE\", \"TYPE_SCHEM\", \"TYPE_NAME\" ";
-    return createMetaDataStatement().executeQuery(sql);
+    return emptyResult("TYPE_CAT", "TYPE_SCHEM", "TYPE_NAME",
+        "CLASS_NAME", "DATA_TYPE", "REMARKS", "BASE_TYPE");
   }
 
   @Override
@@ -3024,25 +2933,11 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
-    Field[] f = new Field[4];
-    f[0] = new Field("NAME", Oid.VARCHAR);
-    f[1] = new Field("MAX_LEN", Oid.INT4);
-    f[2] = new Field("DEFAULT_VALUE", Oid.VARCHAR);
-    f[3] = new Field("DESCRIPTION", Oid.VARCHAR);
-
-    List<Tuple> v = new ArrayList<>();
-
-    if (connection.haveMinimumServerVersion(ServerVersion.v9_0)) {
-      byte[] @Nullable [] tuple = new byte[4][];
-      tuple[0] = connection.encodeString("ApplicationName");
-      tuple[1] = connection.encodeString(Integer.toString(getMaxNameLength()));
-      tuple[2] = connection.encodeString("");
-      tuple[3] = connection
-          .encodeString("The name of the application currently utilizing the connection.");
-      v.add(new Tuple(tuple));
-    }
-
-    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
+    return emptyResult(
+        strCol("NAME"),
+        intCol("MAX_LEN"),
+        strCol("DEFAULT_VALUE"),
+        strCol("DESCRIPTION"));
   }
 
   @Override
@@ -3446,5 +3341,39 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   public boolean supportsStatementPooling() throws SQLException {
     return false;
+  }
+
+  private static Field col(String name, int oid) {
+    return new Field(name, oid);
+  }
+
+  private static Field strCol(String name) {
+    return new Field(name, Oid.VARCHAR);
+  }
+
+  private static Field intCol(String name) {
+    return new Field(name, Oid.INT4);
+  }
+
+  private ResultSet emptyResult(Field... fields) throws SQLException {
+    List<Tuple> tuples = new ArrayList<>();
+    byte[] @Nullable [] tuple = new byte[fields.length][];
+    for (int i = 0; i < fields.length; i++) {
+      tuple[i] = null;
+    }
+    tuples.add(new Tuple(tuple));
+    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
+  }
+
+  private ResultSet emptyResult(String... columns) throws SQLException {
+    List<Tuple> tuples = new ArrayList<>();
+    Field[] fields = new Field[columns.length];
+    byte[] @Nullable [] tuple = new byte[columns.length][];
+    for (int i = 0; i < columns.length; i++) {
+      fields[i] = new Field(columns[i], Oid.VARCHAR);
+      tuple[i] = null;
+    }
+    tuples.add(new Tuple(tuple));
+    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 }
