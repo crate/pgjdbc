@@ -26,12 +26,7 @@ import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.StringTokenizer;
+import java.util.*;
 
 public class PgDatabaseMetaData implements DatabaseMetaData {
 
@@ -2859,71 +2854,8 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern,
       int[] types) throws SQLException {
-    String sql = "select "
-        + "null as type_cat, n.nspname as type_schem, t.typname as type_name,  null as class_name, "
-        + "CASE WHEN t.typtype='c' then " + java.sql.Types.STRUCT + " else "
-        + java.sql.Types.DISTINCT
-        + " end as data_type, pg_catalog.obj_description(t.oid, 'pg_type')  "
-        + "as remarks, CASE WHEN t.typtype = 'd' then  (select CASE";
-
-    for (Iterator<String> i = connection.getTypeInfo().getPGTypeNamesWithSQLTypes(); i.hasNext(); ) {
-      String pgType = i.next();
-      int sqlType = connection.getTypeInfo().getSQLType(pgType);
-      sql += " when typname = " + escapeQuotes(pgType) + " then " + sqlType;
-    }
-
-    sql += " else " + java.sql.Types.OTHER + " end from pg_type where oid=t.typbasetype) "
-        + "else null end as base_type "
-        + "from pg_catalog.pg_type t, pg_catalog.pg_namespace n where t.typnamespace = n.oid and n.nspname != 'pg_catalog' and n.nspname != 'pg_toast'";
-
-
-    String toAdd = "";
-    if (types != null) {
-      toAdd += " and (false ";
-      for (int type : types) {
-        switch (type) {
-          case Types.STRUCT:
-            toAdd += " or t.typtype = 'c'";
-            break;
-          case Types.DISTINCT:
-            toAdd += " or t.typtype = 'd'";
-            break;
-        }
-      }
-      toAdd += " ) ";
-    } else {
-      toAdd += " and t.typtype IN ('c','d') ";
-    }
-    // spec says that if typeNamePattern is a fully qualified name
-    // then the schema and catalog are ignored
-
-    if (typeNamePattern != null) {
-      // search for qualifier
-      int firstQualifier = typeNamePattern.indexOf('.');
-      int secondQualifier = typeNamePattern.lastIndexOf('.');
-
-      if (firstQualifier != -1) {
-        // if one of them is -1 they both will be
-        if (firstQualifier != secondQualifier) {
-          // we have a catalog.schema.typename, ignore catalog
-          schemaPattern = typeNamePattern.substring(firstQualifier + 1, secondQualifier);
-        } else {
-          // we just have a schema.typename
-          schemaPattern = typeNamePattern.substring(0, firstQualifier);
-        }
-        // strip out just the typeName
-        typeNamePattern = typeNamePattern.substring(secondQualifier + 1);
-      }
-      toAdd += " and t.typname like " + escapeQuotes(typeNamePattern);
-    }
-
-    // schemaPattern may have been modified above
-    if (schemaPattern != null) {
-      toAdd += " and n.nspname like " + escapeQuotes(schemaPattern);
-    }
-    sql += toAdd;
-    sql += " order by data_type, type_schem, type_name";
-    return createMetaDataStatement().executeQuery(sql);
+    return emptyResult("TYPE_CAT", "TYPE_SCHEM", "TYPE_NAME",
+            "CLASS_NAME", "DATA_TYPE", "REMARKS", "BASE_TYPE");
   }
 
 
@@ -2967,25 +2899,12 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getClientInfoProperties() throws SQLException {
-    Field f[] = new Field[4];
-    f[0] = new Field("NAME", Oid.VARCHAR);
-    f[1] = new Field("MAX_LEN", Oid.INT4);
-    f[2] = new Field("DEFAULT_VALUE", Oid.VARCHAR);
-    f[3] = new Field("DESCRIPTION", Oid.VARCHAR);
-
-    List<byte[][]> v = new ArrayList<byte[][]>();
-
-    if (connection.haveMinimumServerVersion(ServerVersion.v9_0)) {
-      byte[][] tuple = new byte[4][];
-      tuple[0] = connection.encodeString("ApplicationName");
-      tuple[1] = connection.encodeString(Integer.toString(getMaxNameLength()));
-      tuple[2] = connection.encodeString("");
-      tuple[3] = connection
-          .encodeString("The name of the application currently utilizing the connection.");
-      v.add(tuple);
-    }
-
-    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
+    return emptyResult(
+            strCol("NAME"),
+            intCol("MAX_LEN"),
+            strCol("DEFAULT_VALUE"),
+            strCol("DESCRIPTION")
+    );
   }
 
   public boolean providesQueryObjectGenerator() throws SQLException {
@@ -3101,5 +3020,44 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   public boolean supportsStatementPooling() throws SQLException {
     return false;
+  }
+
+  // ********************************************************
+  // END OF PUBLIC INTERFACE
+  // ********************************************************
+
+
+  private static Field col(String name, int oid) {
+    return new Field(name, oid);
+  }
+
+  private static Field strCol(String name) {
+    return new Field(name, Oid.VARCHAR);
+  }
+
+  private static Field intCol(String name) {
+    return new Field(name, Oid.INT4);
+  }
+
+  private final ResultSet emptyResult(Field... fields) throws SQLException {
+    List<byte[][]> tuples = new ArrayList<>();
+    byte[][] tuple = new byte[fields.length][];
+    for (int i=0; i<fields.length; i++) {
+      tuple[i] = null;
+    }
+    tuples.add(tuple);
+    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
+  }
+
+  private final ResultSet emptyResult(String... columns) throws SQLException {
+    List<byte[][]> tuples = new ArrayList<>();
+    Field fields[] = new Field[columns.length];
+    byte[][] tuple = new byte[columns.length][];
+    for (int i=0; i<columns.length; i++) {
+      fields[i] = new Field(columns[i], Oid.VARCHAR);
+      tuple[i] = null;
+    }
+    tuples.add(tuple);
+    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 }
