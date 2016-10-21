@@ -1255,18 +1255,11 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public ResultSet getTableTypes() throws SQLException {
-    String[] types = tableTypeClauses.keySet().toArray(new String[0]);
-    Arrays.sort(types);
-
-    Field[] f = new Field[1];
-    List<byte[][]> v = new ArrayList<byte[][]>();
+    Field f[] = new Field[1];
+    List<byte[][]> v = new ArrayList<>();
     f[0] = new Field("TABLE_TYPE", Oid.VARCHAR);
-    for (String type : types) {
-      byte[][] tuple = new byte[1][];
-      tuple[0] = connection.encodeString(type);
-      v.add(tuple);
-    }
-
+    v.add(new byte[][] {connection.encodeString("SYSTEM TABLE")});
+    v.add(new byte[][] {connection.encodeString("TABLE")});
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
   }
 
