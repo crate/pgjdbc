@@ -74,12 +74,13 @@ public class TypeInfoCache implements TypeInfo {
       {"float4", Oid.FLOAT4, Types.REAL, "java.lang.Float", Oid.FLOAT4_ARRAY},
       {"float8", Oid.FLOAT8, Types.DOUBLE, "java.lang.Double", Oid.FLOAT8_ARRAY},
       {"char", Oid.CHAR, Types.CHAR, "java.lang.String", Oid.CHAR_ARRAY},
+      {"byte", Oid.INT2, Types.TINYINT, "java.lang.Byte", Oid.INT2_ARRAY},
       {"bpchar", Oid.BPCHAR, Types.CHAR, "java.lang.String", Oid.BPCHAR_ARRAY},
       {"varchar", Oid.VARCHAR, Types.VARCHAR, "java.lang.String", Oid.VARCHAR_ARRAY},
       {"text", Oid.TEXT, Types.VARCHAR, "java.lang.String", Oid.TEXT_ARRAY},
       {"name", Oid.NAME, Types.VARCHAR, "java.lang.String", Oid.NAME_ARRAY},
       {"bytea", Oid.BYTEA, Types.BINARY, "[B", Oid.BYTEA_ARRAY},
-      {"bool", Oid.BOOL, Types.BIT, "java.lang.Boolean", Oid.BOOL_ARRAY},
+      {"bool", Oid.BOOL, Types.BOOLEAN, "java.lang.Boolean", Oid.BOOL_ARRAY},
       {"bit", Oid.BIT, Types.BIT, "java.lang.Boolean", Oid.BIT_ARRAY},
       {"date", Oid.DATE, Types.DATE, "java.sql.Date", Oid.DATE_ARRAY},
       {"time", Oid.TIME, Types.TIME, "java.sql.Time", Oid.TIME_ARRAY},
@@ -90,25 +91,26 @@ public class TypeInfoCache implements TypeInfo {
       //#if mvn.project.property.postgresql.jdbc.spec >= "JDBC4.2"
       {"refcursor", Oid.REF_CURSOR, Types.REF_CURSOR, "java.sql.ResultSet", Oid.REF_CURSOR_ARRAY},
       //#endif
-      {"json", Oid.JSON, Types.OTHER, "org.postgresql.util.PGobject", Oid.JSON_ARRAY},
+      {"json", Oid.JSON, Types.JAVA_OBJECT, "org.postgresql.util.PGobject", Oid.JSON_ARRAY},
       {"point", Oid.POINT, Types.OTHER, "org.postgresql.geometric.PGpoint", Oid.POINT_ARRAY}
   };
 
   /**
-   * PG maps several alias to real type names. When we do queries against pg_catalog, we must use
-   * the real type, not an alias, so use this mapping.
+   * This mapping provides aliases for conversion between Crate types and PostgreSQL types.
    */
   private static final HashMap<String, String> typeAliases;
 
   static {
     typeAliases = new HashMap<String, String>();
-    typeAliases.put("smallint", "int2");
-    typeAliases.put("integer", "int4");
-    typeAliases.put("int", "int4");
-    typeAliases.put("bigint", "int8");
-    typeAliases.put("float", "float8");
     typeAliases.put("boolean", "bool");
-    typeAliases.put("decimal", "numeric");
+    typeAliases.put("short", "int2");
+    typeAliases.put("integer", "int4");
+    typeAliases.put("long", "int8");
+    typeAliases.put("float", "float4");
+    typeAliases.put("double", "float8");
+    typeAliases.put("string", "varchar");
+    typeAliases.put("ip", "varchar");
+    typeAliases.put("object", "json");
   }
 
   public TypeInfoCache(BaseConnection conn, int unknownLength) {
