@@ -2006,104 +2006,281 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getTypeInfo() throws SQLException {
 
     Field f[] = new Field[18];
-    List<byte[][]> v = new ArrayList<byte[][]>(); // The new ResultSet tuple stuff
+    List<byte[][]> v = new ArrayList<>(); // The new ResultSet tuple stuff
 
-    f[0] = new Field("TYPE_NAME", Oid.VARCHAR);
-    f[1] = new Field("DATA_TYPE", Oid.INT2);
-    f[2] = new Field("PRECISION", Oid.INT4);
-    f[3] = new Field("LITERAL_PREFIX", Oid.VARCHAR);
-    f[4] = new Field("LITERAL_SUFFIX", Oid.VARCHAR);
-    f[5] = new Field("CREATE_PARAMS", Oid.VARCHAR);
-    f[6] = new Field("NULLABLE", Oid.INT2);
-    f[7] = new Field("CASE_SENSITIVE", Oid.BOOL);
-    f[8] = new Field("SEARCHABLE", Oid.INT2);
-    f[9] = new Field("UNSIGNED_ATTRIBUTE", Oid.BOOL);
-    f[10] = new Field("FIXED_PREC_SCALE", Oid.BOOL);
-    f[11] = new Field("AUTO_INCREMENT", Oid.BOOL);
-    f[12] = new Field("LOCAL_TYPE_NAME", Oid.VARCHAR);
-    f[13] = new Field("MINIMUM_SCALE", Oid.INT2);
-    f[14] = new Field("MAXIMUM_SCALE", Oid.INT2);
-    f[15] = new Field("SQL_DATA_TYPE", Oid.INT4);
-    f[16] = new Field("SQL_DATETIME_SUB", Oid.INT4);
-    f[17] = new Field("NUM_PREC_RADIX", Oid.INT4);
-
-    String sql;
-    if (connection.haveMinimumServerVersion(ServerVersion.v7_3)) {
-      sql = "SELECT t.typname,t.oid FROM pg_catalog.pg_type t"
-          + " JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-          + " WHERE n.nspname  != 'pg_toast'";
-    } else {
-      sql = "SELECT typname,oid FROM pg_type"
-          + " WHERE NOT (typname ~ '^pg_toast_') ";
-    }
-
-    Statement stmt = connection.createStatement();
-    ResultSet rs = stmt.executeQuery(sql);
-    // cache some results, this will keep memory usage down, and speed
-    // things up a little.
+    byte bNullable[] = connection.encodeString(Integer.toString(typeNullable));
+    byte bSearchable[] = connection.encodeString(Integer.toString(typeSearchable));
+    byte bPredBasic[] = connection.encodeString(Integer.toString(typePredBasic));
+    byte bPredNone[] = connection.encodeString(Integer.toString(typePredNone));
+    byte bTrue[] = connection.encodeString("t");
+    byte bFalse[] = connection.encodeString("f");
     byte bZero[] = connection.encodeString("0");
     byte b10[] = connection.encodeString("10");
-    byte bf[] = connection.encodeString("f");
-    byte bt[] = connection.encodeString("t");
-    byte bliteral[] = connection.encodeString("'");
-    byte bNullable[] =
-        connection.encodeString(Integer.toString(java.sql.DatabaseMetaData.typeNullable));
-    byte bSearchable[] =
-        connection.encodeString(Integer.toString(java.sql.DatabaseMetaData.typeSearchable));
 
-    while (rs.next()) {
-      byte[][] tuple = new byte[18][];
-      String typname = rs.getString(1);
-      int typeOid = (int) rs.getLong(2);
+    f[0] = col("TYPE_NAME");
+    f[1] = col("DATA_TYPE", Oid.INT2);
+    f[2] = col("PRECISION", Oid.INT4);
+    f[3] = col("LITERAL_PREFIX");
+    f[4] = col("LITERAL_SUFFIX");
+    f[5] = col("CREATE_PARAMS");
+    f[6] = col("NULLABLE", Oid.INT2);
+    f[7] = col("CASE_SENSITIVE", Oid.BOOL);
+    f[8] = col("SEARCHABLE", Oid.INT2);
+    f[9] = col("UNSIGNED_ATTRIBUTE", Oid.BOOL);
+    f[10] = col("FIXED_PREC_SCALE", Oid.BOOL);
+    f[11] = col("AUTO_INCREMENT", Oid.BOOL);
+    f[12] = col("LOCAL_TYPE_NAME");
+    f[13] = col("MINIMUM_SCALE", Oid.INT2);
+    f[14] = col("MAXIMUM_SCALE", Oid.INT2);
+    f[15] = col("SQL_DATA_TYPE", Oid.INT4);
+    f[16] = col("SQL_DATETIME_SUB", Oid.INT4);
+    f[17] = col("NUM_PREC_RADIX", Oid.INT4);
 
-      tuple[0] = connection.encodeString(typname);
-      int sqlType = connection.getTypeInfo().getSQLType(typname);
-      tuple[1] =
-          connection.encodeString(Integer.toString(sqlType));
-      tuple[2] = connection
-          .encodeString(Integer.toString(connection.getTypeInfo().getMaximumPrecision(typeOid)));
+    byte[][] row = new byte[18][];
+    row[0] = connection.encodeString("byte");
+    row[1] = connection.encodeString(Integer.toString(Types.TINYINT));
+    row[2] = connection.encodeString("3");
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bFalse;
+    row[8] = bPredBasic;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = bZero;
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
 
-      // Using requiresQuoting(oid) would might trigger select statements that might fail with NPE
-      // if oid in question is being dropped.
-      // requiresQuotingSqlType is not bulletproof, however, it solves the most visible NPE.
-      if (connection.getTypeInfo().requiresQuotingSqlType(sqlType)) {
-        tuple[3] = bliteral;
-        tuple[4] = bliteral;
-      }
+    row[0] = connection.encodeString("long");
+    row[1] = connection.encodeString(Integer.toString(Types.BIGINT));
+    row[2] = connection.encodeString("19");
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bFalse;
+    row[8] = bPredBasic;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = bZero;
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
 
-      tuple[6] = bNullable; // all types can be null
-      tuple[7] = connection.getTypeInfo().isCaseSensitive(typeOid) ? bt : bf;
-      tuple[8] = bSearchable; // any thing can be used in the WHERE clause
-      tuple[9] = connection.getTypeInfo().isSigned(typeOid) ? bf : bt;
-      tuple[10] = bf; // false for now - must handle money
-      tuple[11] = bf; // false - it isn't autoincrement
-      tuple[13] = bZero; // min scale is zero
-      // only numeric can supports a scale.
-      tuple[14] = (typeOid == Oid.NUMERIC) ? connection.encodeString("1000") : bZero;
+    row[0] = connection.encodeString("integer");
+    row[1] = connection.encodeString(Integer.toString(Types.INTEGER));
+    row[2] = b10;
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bFalse;
+    row[8] = bPredBasic;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = bZero;
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
 
-      // 12 - LOCAL_TYPE_NAME is null
-      // 15 & 16 are unused so we return null
-      tuple[17] = b10; // everything is base 10
-      v.add(tuple);
+    row[0] = connection.encodeString("short");
+    row[1] = connection.encodeString(Integer.toString(Types.SMALLINT));
+    row[2] = connection.encodeString("5");
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bFalse;
+    row[8] = bPredBasic;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = bZero;
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
 
-      // add pseudo-type serial, bigserial
-      if (typname.equals("int4")) {
-        byte[][] tuple1 = tuple.clone();
+    row[0] = connection.encodeString("float");
+    row[1] = connection.encodeString(Integer.toString(Types.REAL));
+    row[2] = connection.encodeString("7");
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bFalse;
+    row[8] = bPredBasic;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = connection.encodeString("6");
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
 
-        tuple1[0] = connection.encodeString("serial");
-        tuple1[11] = bt;
-        v.add(tuple1);
-      } else if (typname.equals("int8")) {
-        byte[][] tuple1 = tuple.clone();
+    row[0] = connection.encodeString("double");
+    row[1] = connection.encodeString(Integer.toString(Types.DOUBLE));
+    row[2] = connection.encodeString("15");
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bFalse;
+    row[8] = bPredBasic;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = connection.encodeString("14");
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
 
-        tuple1[0] = connection.encodeString("bigserial");
-        tuple1[11] = bt;
-        v.add(tuple1);
-      }
+    row[0] = connection.encodeString("string");
+    row[1] = connection.encodeString(Integer.toString(Types.VARCHAR));
+    row[2] = null;
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bTrue;
+    row[8] = bSearchable;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = bZero;
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
 
+    row[0] = connection.encodeString("ip");
+    row[1] = connection.encodeString(Integer.toString(Types.VARCHAR));
+    row[2] = connection.encodeString("15");
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bFalse;
+    row[8] = bSearchable;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = bZero;
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
+
+    row[0] = connection.encodeString("boolean");
+    row[1] = connection.encodeString(Integer.toString(Types.BOOLEAN));
+    row[2] = null;
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bFalse;
+    row[8] = bPredBasic;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = bZero;
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
+
+    row[0] = connection.encodeString("timestamp");
+    row[1] = connection.encodeString(Integer.toString(Types.TIMESTAMP));
+    row[2] = null;
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bTrue;
+    row[8] = bPredBasic;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = bZero;
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
+
+    row[0] = connection.encodeString("object");
+    row[1] = connection.encodeString(Integer.toString(Types.STRUCT));
+    row[2] = null;
+    row[3] = null;
+    row[4] = null;
+    row[5] = null;
+    row[6] = bNullable;
+    row[7] = bFalse;
+    row[8] = bPredNone;
+    row[9] = bTrue;
+    row[10] = bFalse;
+    row[11] = bFalse;
+    row[12] = row[0];
+    row[13] = bZero;
+    row[14] = bZero;
+    row[15] = null;
+    row[16] = null;
+    row[17] = b10;
+    v.add(row.clone());
+
+    String[] arrayTypes = new String[]{"string_array", "ip_array", "long_array",
+            "integer_array", "short_array", "boolean_array", "byte_array",
+            "float_array", "double_array", "object_array"};
+    for (int i = 11; i < 11 + arrayTypes.length; i++) {
+      row[0] = connection.encodeString(arrayTypes[i - 11]);
+      row[1] = connection.encodeString(Integer.toString(Types.ARRAY));
+      row[2] = null;
+      row[3] = null;
+      row[4] = null;
+      row[5] = null;
+      row[6] = bNullable;
+      row[7] = bFalse;
+      row[8] = bPredNone;
+      row[9] = bTrue;
+      row[10] = bFalse;
+      row[11] = bFalse;
+      row[12] = row[0];
+      row[13] = bZero;
+      row[14] = bZero;
+      row[15] = null;
+      row[16] = null;
+      row[17] = b10;
+      v.add(row.clone());
     }
-    rs.close();
-    stmt.close();
 
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
   }
