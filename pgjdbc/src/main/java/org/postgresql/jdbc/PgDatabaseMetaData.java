@@ -22,12 +22,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.StringTokenizer;
 
 public class PgDatabaseMetaData implements DatabaseMetaData {
 
@@ -284,53 +281,21 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   public String getNumericFunctions() throws SQLException {
-    return EscapedFunctions.ABS + ',' + EscapedFunctions.ACOS + ',' + EscapedFunctions.ASIN + ','
-        + EscapedFunctions.ATAN + ',' + EscapedFunctions.ATAN2 + ',' + EscapedFunctions.CEILING
-        + ',' + EscapedFunctions.COS + ',' + EscapedFunctions.COT + ',' + EscapedFunctions.DEGREES
-        + ',' + EscapedFunctions.EXP + ',' + EscapedFunctions.FLOOR + ',' + EscapedFunctions.LOG
-        + ',' + EscapedFunctions.LOG10 + ',' + EscapedFunctions.MOD + ',' + EscapedFunctions.PI
-        + ',' + EscapedFunctions.POWER + ',' + EscapedFunctions.RADIANS + ','
-        + EscapedFunctions.ROUND + ',' + EscapedFunctions.SIGN + ',' + EscapedFunctions.SIN + ','
-        + EscapedFunctions.SQRT + ',' + EscapedFunctions.TAN + ',' + EscapedFunctions.TRUNCATE;
-
+    return "abs,ceil,floor,ln,log,random,round,sqrt,sin,asin,cos," +
+           "acos,tan,atan";
   }
 
   public String getStringFunctions() throws SQLException {
-    String funcs = EscapedFunctions.ASCII + ',' + EscapedFunctions.CHAR + ','
-        + EscapedFunctions.CONCAT + ',' + EscapedFunctions.LCASE + ',' + EscapedFunctions.LEFT + ','
-        + EscapedFunctions.LENGTH + ',' + EscapedFunctions.LTRIM + ',' + EscapedFunctions.REPEAT
-        + ',' + EscapedFunctions.RTRIM + ',' + EscapedFunctions.SPACE + ','
-        + EscapedFunctions.SUBSTRING + ',' + EscapedFunctions.UCASE;
-
-    // Currently these don't work correctly with parameterized
-    // arguments, so leave them out. They reorder the arguments
-    // when rewriting the query, but no translation layer is provided,
-    // so a setObject(N, obj) will not go to the correct parameter.
-    // ','+EscapedFunctions.INSERT+','+EscapedFunctions.LOCATE+
-    // ','+EscapedFunctions.RIGHT+
-
-    funcs += ',' + EscapedFunctions.REPLACE;
-
-    return funcs;
+    return "concat,format,substr,char_length,bit_length,octet_length,"+
+           "lower,upper";
   }
 
   public String getSystemFunctions() throws SQLException {
-    return EscapedFunctions.DATABASE + ',' + EscapedFunctions.IFNULL + ',' + EscapedFunctions.USER;
+    return "";
   }
 
   public String getTimeDateFunctions() throws SQLException {
-    String timeDateFuncs = EscapedFunctions.CURDATE + ',' + EscapedFunctions.CURTIME + ','
-        + EscapedFunctions.DAYNAME + ',' + EscapedFunctions.DAYOFMONTH + ','
-        + EscapedFunctions.DAYOFWEEK + ',' + EscapedFunctions.DAYOFYEAR + ','
-        + EscapedFunctions.HOUR + ',' + EscapedFunctions.MINUTE + ',' + EscapedFunctions.MONTH + ','
-        + EscapedFunctions.MONTHNAME + ',' + EscapedFunctions.NOW + ',' + EscapedFunctions.QUARTER
-        + ',' + EscapedFunctions.SECOND + ',' + EscapedFunctions.WEEK + ',' + EscapedFunctions.YEAR;
-
-    timeDateFuncs += ',' + EscapedFunctions.TIMESTAMPADD;
-
-    // +','+EscapedFunctions.TIMESTAMPDIFF;
-
-    return timeDateFuncs;
+    return "date_trunc,extract,date_format";
   }
 
   public String getSearchStringEscape() throws SQLException {
