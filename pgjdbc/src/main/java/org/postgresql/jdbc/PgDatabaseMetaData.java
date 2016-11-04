@@ -997,17 +997,18 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     fields[8] = new Field("SELF_REFERENCING_COL_NAME", Oid.VARCHAR);
     fields[9] = new Field("REF_GENERATION", Oid.VARCHAR);
 
-    String stmt = "select schema_name, table_name " +
-      "from information_schema.tables " +
-      createInfoSchemaTableWhereClause(schemaPattern, tableNamePattern, null) +
-      " order by schema_name, table_name";
+    String schemaName = getCrateVersion().before("0.57.0") ? "schema_name" : "table_schema";
+    String stmt = "select " + schemaName + ", table_name" +
+      " from information_schema.tables" +
+      createInfoSchemaTableWhereClause(schemaName, schemaPattern, tableNamePattern, null) +
+      " order by " + schemaName + ", table_name";
     ResultSet rs = connection.createStatement().executeQuery(stmt);
 
     List<byte[][]> tuples = new ArrayList<>();
     while (rs.next()) {
       byte[][] tuple = new byte[fields.length][];
 
-      String schema = rs.getString("schema_name");
+      String schema = rs.getString(schemaName);
       if ("sys".equals(schema) || "information_schema".equals(schema)) {
         tuple[3] = connection.encodeString("SYSTEM TABLE");
       } else {
@@ -1028,16 +1029,54 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 
-  private StringBuilder createInfoSchemaTableWhereClause(String schemaPattern,
+  private CrateVersion getCrateVersion() throws SQLException {
+    ResultSet rs = connection.createStatement()
+      .executeQuery("select version['number'] as version from sys.nodes limit 1");
+    if (rs.next()) {
+      return new CrateVersion(rs.getString("version"));
+    }
+    throw new SQLException("unable to fetch Crate version");
+  }
+
+  private static class CrateVersion implements Comparable<String> {
+
+    private final String version;
+
+    private CrateVersion(String version) {
+      this.version = version;
+    }
+
+    @Override
+    public int compareTo(String o) {
+      String[] v1 = version.split("\\.");
+      String[] v2 = o.split("\\.");
+      int i = 0;
+      while (i < v1.length && i < v2.length && v1[i].equals(v2[i])) {
+        i++;
+      }
+      if (i < v1.length && i < v2.length) {
+        int diff = Integer.valueOf(v1[i]).compareTo(Integer.valueOf(v2[i]));
+        return Integer.signum(diff);
+      }
+      return Integer.signum(v1.length - v2.length);
+    }
+
+    boolean before(String version) {
+      return this.compareTo(version) == -1;
+    }
+  }
+
+  private StringBuilder createInfoSchemaTableWhereClause(String schemaColumnName,
+                                                         String schemaPattern,
                                                          String tableNamePattern,
                                                          String columnNamePattern) throws SQLException {
     StringBuilder where = new StringBuilder(" where ");
     if (schemaPattern == null) {
-      where.append("schema_name like '%'");
+      where.append(schemaColumnName).append(" like '%'");
     } else if (schemaPattern.equals("")) {
-      where.append("schema_name is null");
+      where.append(schemaColumnName).append(" is null");
     } else {
-      where.append("schema_name like '")
+      where.append(schemaColumnName).append(" like '")
         .append(connection.escapeString(schemaPattern))
         .append("'");
     }
@@ -1212,18 +1251,19 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     fields[22] = new Field("IS_AUTOINCREMENT", Oid.VARCHAR);
     fields[23] = new Field("IS_GENERATEDCOLUMN", Oid.VARCHAR);
 
-    String stmt = "select schema_name, table_name, column_name, data_type, ordinal_position " +
-      "from information_schema.columns " +
-      createInfoSchemaTableWhereClause(schemaPattern, tableNamePattern, columnNamePattern) +
+    String schemaName = getCrateVersion().before("0.57.0") ? "schema_name" : "table_schema";
+    String stmt = "select " + schemaName + ", table_name, column_name, data_type, ordinal_position" +
+      " from information_schema.columns " +
+      createInfoSchemaTableWhereClause(schemaName, schemaPattern, tableNamePattern, columnNamePattern) +
       " and column_name not like '%[%]' and column_name not like '%.%'" +
-      " order by schema_name, table_name, ordinal_position";
+      " order by " + schemaName + ", table_name, ordinal_position";
     ResultSet rs = connection.createStatement().executeQuery(stmt);
 
     List<byte[][]> tuples = new ArrayList<>();
     while (rs.next()) {
       byte[][] tuple = new byte[fields.length][];
       tuple[0] = null;
-      tuple[1] = rs.getBytes("schema_name");
+      tuple[1] = rs.getBytes(schemaName);
       tuple[2] = rs.getBytes("table_name");
       tuple[3] = rs.getBytes("column_name");
       String sqlType = rs.getString("data_type");
