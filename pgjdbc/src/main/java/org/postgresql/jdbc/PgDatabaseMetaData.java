@@ -1138,7 +1138,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     fields[8] = new Field("SELF_REFERENCING_COL_NAME", Oid.VARCHAR);
     fields[9] = new Field("REF_GENERATION", Oid.VARCHAR);
 
-    String schemaName = getCrateVersion().before("0.57.0") ? "schema_name" : "table_schema";
+    String schemaName = getCrateSchemaName();
     String stmt = "select " + schemaName + ", table_name"
         + " from information_schema.tables"
         + createInfoSchemaTableWhereClause(schemaName, schemaPattern, tableNamePattern, null)
@@ -1168,6 +1168,10 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 
+  private String getCrateSchemaName() throws SQLException {
+    return getCrateVersion().before("0.57.0") ? "schema_name" : "table_schema";
+  }
+
   private CrateVersion getCrateVersion() throws SQLException {
     ResultSet rs = connection.createStatement()
         .executeQuery("select version['number'] as version from sys.nodes limit 1");
@@ -1175,33 +1179,6 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       return new CrateVersion(castNonNull(rs.getString("version")));
     }
     throw new SQLException("unable to fetch Crate version");
-  }
-
-  private static class CrateVersion implements Comparable<String> {
-
-    private final String version;
-
-    private CrateVersion(String version) {
-      this.version = version;
-    }
-
-    @Override
-    public int compareTo(String o) {
-      String[] v1 = version.split("\\.");
-      String[] v2 = o.split("\\.");
-      int i = 0;
-      while (i < v1.length && i < v2.length && v1[i].equals(v2[i])) {
-        i++;
-      }
-      if (i < v1.length && i < v2.length) {
-        return Integer.signum(Integer.valueOf(v1[i]).compareTo(Integer.valueOf(v2[i])));
-      }
-      return Integer.signum(v1.length - v2.length);
-    }
-
-    boolean before(String version) {
-      return this.compareTo(version) == -1;
-    }
   }
 
   private StringBuilder createInfoSchemaTableWhereClause(String schemaColumnName,
@@ -1326,16 +1303,11 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getSchemas(@Nullable String catalog, @Nullable String schemaPattern)
       throws SQLException {
-    boolean hasSchemata = getDatabaseMinorVersion() > 45;
-    String table = hasSchemata ? "information_schema.schemata" : "information_schema.tables";
-    StringBuilder stmt = new StringBuilder("select schema_name from " + table);
+    StringBuilder stmt = new StringBuilder("select schema_name from information_schema.schemata");
     if (schemaPattern != null) {
       stmt.append(" where schema_name like '")
           .append(connection.escapeString(schemaPattern))
           .append("'");
-    }
-    if (!hasSchemata) {
-      stmt.append(" group by schema_name");
     }
     stmt.append(" order by schema_name");
 
@@ -1395,7 +1367,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     fields[22] = new Field("IS_AUTOINCREMENT", Oid.VARCHAR);
     fields[23] = new Field("IS_GENERATEDCOLUMN", Oid.VARCHAR);
 
-    String schemaName = getCrateVersion().before("0.57.0") ? "schema_name" : "table_schema";
+    String schemaName = getCrateSchemaName();
     String stmt = "select " + schemaName + ", table_name, column_name, data_type, ordinal_position"
         + " from information_schema.columns "
         + createInfoSchemaTableWhereClause(schemaName, schemaPattern, tableNamePattern,
@@ -1708,8 +1680,9 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     fields[4] = new Field("KEY_SEQ", Oid.VARCHAR);
     fields[5] = new Field("PK_NAME", Oid.VARCHAR);
 
+    String schemaName = getCrateSchemaName();
     StringBuilder sql = new StringBuilder("SELECT NULL AS TABLE_CAT, "
-        + "schema_name AS TABLE_SCHEM, "
+        + schemaName + " AS TABLE_SCHEM, "
         + "table_name as TABLE_NAME, "
         + "constraint_name AS COLUMN_NAMES, "
         + "0 AS KEY_SEQ, "
@@ -1717,7 +1690,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
         + "FROM information_schema.table_constraints "
         + "WHERE '_id' != ANY(constraint_name) ");
     if (schema != null) {
-      sql.append("AND schema_name = '" + connection.escapeString(schema) + "' ");
+      sql.append("AND " + schemaName + " = '" + connection.escapeString(schema) + "' ");
     }
     sql.append("AND table_name = '" + connection.escapeString(table) + "' ")
         .append("ORDER BY TABLE_SCHEM, TABLE_NAME");
