@@ -1901,7 +1901,9 @@ public class PgConnection implements BaseConnection {
   public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency)
       throws SQLException {
     checkClosed();
-    return prepareCall(sql, resultSetType, resultSetConcurrency, getHoldability());
+    throw new SQLFeatureNotSupportedException(
+        "Connection: prepareCall(String sql, int resultSetType, int resultSetConcurrency) "
+            + "not supported");
   }
 
   @Override
