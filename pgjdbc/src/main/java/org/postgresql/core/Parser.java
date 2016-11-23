@@ -67,6 +67,8 @@ public class Parser {
     int valuesBraceOpenPosition = -1;
     int valuesBraceClosePosition = -1;
     boolean isInsertPresent = false;
+    boolean isReturningPresent = false;
+    boolean isReturningPresentPrev = false;
     SqlCommandType currentCommandType = SqlCommandType.BLANK;
     SqlCommandType prevCommandType = SqlCommandType.BLANK;
     int numberOfStatements = 0;
@@ -140,6 +142,10 @@ public class Parser {
             }
             fragmentStart = i + 1;
             if (nativeSql.length() > 0) {
+              if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent)) {
+                isReturningPresent = true;
+              }
+
               if (splitStatements) {
                 if (nativeQueries == null) {
                   nativeQueries = new ArrayList<NativeQuery>();
@@ -150,11 +156,13 @@ public class Parser {
                     SqlCommand.createStatementTypeInfo(
                         currentCommandType, isBatchedReWriteConfigured, valuesBraceOpenPosition,
                         valuesBraceClosePosition,
-                        false, nativeQueries.size())));
+                        isReturningPresent, nativeQueries.size())));
               }
             }
             prevCommandType = currentCommandType;
+            isReturningPresentPrev = isReturningPresent;
             currentCommandType = SqlCommandType.BLANK;
+            isReturningPresent = false;
             if (splitStatements) {
               // Prepare for next query
               if (bindPositions != null) {
@@ -200,7 +208,9 @@ public class Parser {
             }
           }
         }
-        if (wordLength == 6 && parseValuesKeyword(aChars, keywordStart)) {
+        if (wordLength == 9 && parseReturningKeyword(aChars, keywordStart)) {
+          isReturningPresent = true;
+        } else if (wordLength == 6 && parseValuesKeyword(aChars, keywordStart)) {
           isValuesFound = true;
         }
         keywordStart = -1;
@@ -225,8 +235,10 @@ public class Parser {
       nativeSql.append(aChars, fragmentStart, aChars.length - fragmentStart);
     } else {
       if (numberOfStatements > 1) {
+        isReturningPresent = false;
         currentCommandType = SqlCommandType.BLANK;
       } else if (numberOfStatements == 1) {
+        isReturningPresent = isReturningPresentPrev;
         currentCommandType = prevCommandType;
       }
     }
@@ -235,11 +247,15 @@ public class Parser {
       return nativeQueries != null ? nativeQueries : Collections.<NativeQuery>emptyList();
     }
 
+    if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent)) {
+      isReturningPresent = true;
+    }
+
     NativeQuery lastQuery = new NativeQuery(nativeSql.toString(),
         toIntArray(bindPositions), !splitStatements,
         SqlCommand.createStatementTypeInfo(currentCommandType,
             isBatchedReWriteConfigured, valuesBraceOpenPosition, valuesBraceClosePosition,
-            false, (nativeQueries == null ? 0 : nativeQueries.size())));
+            isReturningPresent, (nativeQueries == null ? 0 : nativeQueries.size())));
 
     if (nativeQueries == null) {
       return Collections.singletonList(lastQuery);
@@ -260,6 +276,19 @@ public class Parser {
         && currentCommandType != SqlCommandType.UPDATE
         && currentCommandType != SqlCommandType.DELETE) {
       return false;
+    }
+
+    nativeSql.append("\nRETURNING ");
+    if (returningColumnNames.length == 1 && returningColumnNames[0].charAt(0) == '*') {
+      nativeSql.append('*');
+      return true;
+    }
+    for (int col = 0; col < returningColumnNames.length; col++) {
+      String columnName = returningColumnNames[col];
+      if (col > 0) {
+        nativeSql.append(", ");
+      }
+      Utils.escapeIdentifier(nativeSql, columnName);
     }
     return true;
   }
