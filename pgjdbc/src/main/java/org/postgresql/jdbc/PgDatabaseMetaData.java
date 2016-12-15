@@ -1033,7 +1033,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     return getCrateVersion().before("0.57.0") ? "schema_name" : "table_schema";
   }
 
-  private CrateVersion getCrateVersion() throws SQLException {
+  public CrateVersion getCrateVersion() throws SQLException {
     ResultSet rs = connection.createStatement()
       .executeQuery("select version['number'] as version from sys.nodes limit 1");
     if (rs.next()) {
