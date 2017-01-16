@@ -478,8 +478,21 @@ public class PgStatement implements Statement, BaseStatement {
   }
 
   public boolean getMoreResults() throws SQLException {
-    checkClosed();
-    throw new SQLFeatureNotSupportedException("Statement: getMoreResults not supported");
+    if (result == null) {
+      return false;
+    }
+
+    result = result.getNext();
+
+    // Close preceding resultsets.
+    while (firstUnclosedResult != result) {
+      if (firstUnclosedResult.getResultSet() != null) {
+        firstUnclosedResult.getResultSet().close();
+      }
+      firstUnclosedResult = firstUnclosedResult.getNext();
+    }
+
+    return (result != null && result.getResultSet() != null);
   }
 
   public int getMaxRows() throws SQLException {
