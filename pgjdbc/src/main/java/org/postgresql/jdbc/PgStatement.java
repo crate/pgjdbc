@@ -577,8 +577,16 @@ public class PgStatement implements Statement, BaseStatement {
 
   @Override
   public boolean getMoreResults() throws SQLException {
-    checkClosed();
-    throw new SQLFeatureNotSupportedException("Statement: getMoreResults not supported");
+    ResultWrapper result = this.result;
+    if (result == null) {
+      return false;
+    }
+
+    this.result = result = result.getNext();
+
+    closeUnclosedProcessedResults();
+
+    return result != null && result.getResultSet() != null;
   }
 
   @Override
