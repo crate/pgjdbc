@@ -708,10 +708,13 @@ public class PgConnection implements BaseConnection {
 
   public void setAutoCommit(boolean autoCommit) throws SQLException {
     checkClosed();
-    if (!autoCommit && strict) {
-      throw new SQLFeatureNotSupportedException("The auto-commit mode cannot be disabled. "+
-                                                "The Crate JDBC driver does not support manual commit.");
+    if (this.autoCommit == autoCommit) {
+      return;
+    } else if (!autoCommit && strict) {
+      throw new SQLFeatureNotSupportedException("The auto-commit mode cannot be disabled in strict mode. "+
+              "The Crate JDBC driver does not support manual commit.");
     }
+    this.autoCommit = autoCommit;
   }
 
   public boolean getAutoCommit() throws SQLException {
