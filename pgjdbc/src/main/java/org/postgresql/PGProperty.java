@@ -79,7 +79,7 @@ public enum PGProperty {
    */
   ASSUME_MIN_SERVER_VERSION(
       "assumeMinServerVersion",
-      null,
+      "9.5",
       "Assume the server is at least that version"),
 
   /**
