@@ -2613,12 +2613,6 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   private final ResultSet emptyResult(Field... fields) throws SQLException {
-    List<byte[][]> tuples = new ArrayList<>();
-    byte[][] tuple = new byte[fields.length][];
-    for (int i=0; i<fields.length; i++) {
-      tuple[i] = null;
-    }
-    tuples.add(tuple);
-    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
+    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, Collections.<byte[][]>emptyList());
   }
 }
