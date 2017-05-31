@@ -52,6 +52,15 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   private int nameDataLength; // length for name datatype
   private int indexMaxKeys; // maximum number of keys in an index.
 
+  private static final Map<String, String> REFERENCE_GENERATIONS;
+
+  static {
+    Map<String, String> referenceGenerations = new HashMap<>();
+    referenceGenerations.put("SYSTEM GENERATED", "SYSTEM");
+    referenceGenerations.put("USER GENERATED", "USER");
+    REFERENCE_GENERATIONS = Collections.unmodifiableMap(referenceGenerations);
+  }
+
   protected int getMaxIndexKeys() throws SQLException {
     if (indexMaxKeys == 0) {
       String sql;
@@ -1140,33 +1149,59 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     fields[9] = new Field("REF_GENERATION", Oid.VARCHAR);
 
     String schemaName = getCrateSchemaName();
-    String stmt = "select " + schemaName + ", table_name"
-        + " from information_schema.tables"
-        + createInfoSchemaTableWhereClause(schemaName, schemaPattern, tableNamePattern, null)
-        + " order by " + schemaName + ", table_name";
+    String whereClause = createInfoSchemaTableWhereClause(schemaName, schemaPattern,
+        tableNamePattern, null).toString();
+    String stmt = getTablesStatement(schemaName, whereClause);
     ResultSet rs = connection.createStatement().executeQuery(stmt);
 
     List<Tuple> tuples = new ArrayList<>();
     while (rs.next()) {
       byte[] @Nullable [] tuple = new byte[fields.length][];
       String schema = rs.getString(schemaName);
-      if ("sys".equals(schema) || "information_schema".equals(schema)) {
-        tuple[3] = connection.encodeString("SYSTEM TABLE");
-      } else {
-        tuple[3] = connection.encodeString("TABLE");
-      }
-      tuple[0] = null;
       tuple[1] = rs.getBytes(schemaName);
       tuple[2] = rs.getBytes("table_name");
       tuple[4] = connection.encodeString("");
       tuple[5] = null;
       tuple[6] = null;
       tuple[7] = null;
-      tuple[8] = connection.encodeString("_id");
-      tuple[9] = connection.encodeString("SYSTEM");
+
+      if (getCrateVersion().before("2.0.0")) {
+        tuple[0] = null;
+        if ("sys".equals(schema) || "information_schema".equals(schema)) {
+          tuple[3] = connection.encodeString("SYSTEM TABLE");
+        } else {
+          tuple[3] = connection.encodeString("TABLE");
+        }
+        tuple[8] = connection.encodeString("_id");
+        tuple[9] = connection.encodeString("SYSTEM");
+      } else {
+        tuple[0] = rs.getBytes("table_catalog");
+        tuple[3] = rs.getBytes("table_type");
+        tuple[8] = rs.getBytes("self_referencing_column_name");
+        String referenceGeneration = getReferenceGeneration(rs.getString("reference_generation"));
+        tuple[9] = referenceGeneration == null ? null : connection.encodeString(referenceGeneration);
+      }
+
       tuples.add(new Tuple(tuple));
     }
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
+  }
+
+  private String getTablesStatement(String schemaName, String whereClause) throws SQLException {
+    String select;
+    if (getCrateVersion().before("2.0.0")) {
+      select = "SELECT " + schemaName + ", table_name";
+    } else {
+      select = "SELECT " + schemaName + ", table_name, table_catalog, table_type,"
+          + " self_referencing_column_name, reference_generation";
+    }
+    return select
+        + " FROM information_schema.tables" + whereClause
+        + " ORDER BY " + schemaName + ", table_name";
+  }
+
+  private static @Nullable String getReferenceGeneration(@Nullable String referenceGeneration) {
+    return referenceGeneration == null ? null : REFERENCE_GENERATIONS.get(referenceGeneration);
   }
 
   private String getCrateSchemaName() throws SQLException {
@@ -1369,18 +1404,14 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     fields[23] = new Field("IS_GENERATEDCOLUMN", Oid.VARCHAR);
 
     String schemaName = getCrateSchemaName();
-    String stmt = "select " + schemaName + ", table_name, column_name, data_type, ordinal_position"
-        + " from information_schema.columns "
-        + createInfoSchemaTableWhereClause(schemaName, schemaPattern, tableNamePattern,
-            columnNamePattern)
-        + " and column_name not like '%[%]' and column_name not like '%.%'"
-        + " order by " + schemaName + ", table_name, ordinal_position";
+    String whereClause = createInfoSchemaTableWhereClause(schemaName, schemaPattern,
+        tableNamePattern, columnNamePattern).toString();
+    String stmt = getColumnsStatement(schemaName, whereClause);
     ResultSet rs = connection.createStatement().executeQuery(stmt);
 
     List<Tuple> tuples = new ArrayList<>();
     while (rs.next()) {
       byte[] @Nullable [] tuple = new byte[fields.length][];
-      tuple[0] = null;
       tuple[1] = rs.getBytes(schemaName);
       tuple[2] = rs.getBytes("table_name");
       tuple[3] = rs.getBytes("column_name");
@@ -1389,25 +1420,54 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       tuple[5] = rs.getBytes("data_type");
       tuple[6] = null;
       tuple[7] = null;
-      tuple[8] = null;
-      tuple[9] = connection.encodeString("10");
       tuple[10] = connection.encodeString(Integer.toString(columnNullable));
       tuple[11] = null;
-      tuple[12] = null;
       tuple[13] = null;
       tuple[14] = null;
-      tuple[15] = null;
       tuple[16] = rs.getBytes("ordinal_position");
-      tuple[17] = connection.encodeString("YES");
       tuple[18] = null;
       tuple[19] = null;
       tuple[20] = null;
       tuple[21] = null;
       tuple[22] = connection.encodeString("NO");
-      tuple[23] = connection.encodeString("NO");
+
+      if (getCrateVersion().before("2.0.0")) {
+        tuple[0] = null;
+        tuple[8] = null;
+        tuple[9] = connection.encodeString("10");
+        tuple[12] = null;
+        tuple[15] = null;
+        tuple[17] = connection.encodeString("YES");
+        tuple[23] = connection.encodeString("NO");
+      } else {
+        tuple[0] = rs.getBytes("table_catalog");
+        tuple[8] = rs.getBytes("numeric_precision");
+        tuple[9] = rs.getBytes("numeric_precision_radix");
+        tuple[12] = rs.getBytes("column_default");
+        tuple[15] = rs.getBytes("character_octet_length");
+        tuple[17] = connection.encodeString(rs.getBoolean("is_nullable") ? "YES" : "NO");
+        tuple[23] = connection.encodeString(rs.getBoolean("is_generated") ? "YES" : "NO");
+      }
+
       tuples.add(new Tuple(tuple));
     }
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
+  }
+
+  private String getColumnsStatement(String schemaName, String whereClause) throws SQLException {
+    String select;
+    if (getCrateVersion().before("2.0.0")) {
+      select = "SELECT " + schemaName + ", table_name, column_name, data_type, ordinal_position";
+    } else {
+      select = "SELECT " + schemaName + ", table_name, column_name, data_type, ordinal_position,"
+          + " table_catalog, numeric_precision, numeric_precision_radix, column_default,"
+          + " character_octet_length, is_nullable, is_generated";
+    }
+    return select
+        + " FROM information_schema.columns "
+        + whereClause
+        + " AND column_name NOT LIKE '%[%]' AND column_name NOT LIKE '%.%'"
+        + " ORDER BY " + schemaName + ", table_name, ordinal_position";
   }
 
   private int sqlTypeOfCrateType(String dataType) {
