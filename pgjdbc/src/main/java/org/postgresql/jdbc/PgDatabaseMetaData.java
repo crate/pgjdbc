@@ -873,7 +873,11 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   public boolean supportsTransactions() throws SQLException {
-    return true;
+    if (connection.isStrict()) {
+      return false;
+    } else {
+      return true;
+    }
   }
 
   /**

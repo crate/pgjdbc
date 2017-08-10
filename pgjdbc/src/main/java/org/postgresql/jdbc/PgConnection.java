@@ -706,6 +706,10 @@ public class PgConnection implements BaseConnection {
     return readOnly;
   }
 
+  public boolean isStrict() throws SQLException {
+    return strict;
+  }
+
   public void setAutoCommit(boolean autoCommit) throws SQLException {
     checkClosed();
     if (this.autoCommit == autoCommit) {
