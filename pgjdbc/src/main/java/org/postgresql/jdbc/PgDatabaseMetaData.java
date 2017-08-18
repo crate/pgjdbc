@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
 
@@ -975,41 +974,16 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public int getDefaultTransactionIsolation() throws SQLException {
-    String sql =
-        "SELECT setting FROM pg_catalog.pg_settings WHERE name='default_transaction_isolation'";
-
-    try (Statement stmt = connection.createStatement();
-         ResultSet rs = stmt.executeQuery(sql)) {
-      String level = null;
-      if (rs.next()) {
-        level = rs.getString(1);
-      }
-      if (level == null) {
-        throw new PSQLException(
-            GT.tr(
-                "Unable to determine a value for DefaultTransactionIsolation due to missing "
-                    + " entry in pg_catalog.pg_settings WHERE name='default_transaction_isolation'."),
-            PSQLState.UNEXPECTED_ERROR);
-      }
-      // PostgreSQL returns the value in lower case, so using "toLowerCase" here would be
-      // slightly more efficient.
-      switch (level.toLowerCase(Locale.ROOT)) {
-        case "read uncommitted":
-          return Connection.TRANSACTION_READ_UNCOMMITTED;
-        case "repeatable read":
-          return Connection.TRANSACTION_REPEATABLE_READ;
-        case "serializable":
-          return Connection.TRANSACTION_SERIALIZABLE;
-        case "read committed":
-        default: // Best guess.
-          return Connection.TRANSACTION_READ_COMMITTED;
-      }
+    if (connection.isStrict()) {
+      return Connection.TRANSACTION_NONE;
+    } else {
+      return Connection.TRANSACTION_READ_COMMITTED;
     }
   }
 
   @Override
   public boolean supportsTransactions() throws SQLException {
-    return true;
+    return !connection.isStrict();
   }
 
   /**
@@ -1020,20 +994,24 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
    */
   @Override
   public boolean supportsTransactionIsolationLevel(int level) throws SQLException {
-    switch (level) {
-      case Connection.TRANSACTION_READ_UNCOMMITTED:
-      case Connection.TRANSACTION_READ_COMMITTED:
-      case Connection.TRANSACTION_REPEATABLE_READ:
-      case Connection.TRANSACTION_SERIALIZABLE:
-        return true;
-      default:
-        return false;
+    if (connection.isStrict()) {
+      return level == Connection.TRANSACTION_NONE;
+    } else {
+      switch (level) {
+        case Connection.TRANSACTION_READ_UNCOMMITTED:
+        case Connection.TRANSACTION_READ_COMMITTED:
+        case Connection.TRANSACTION_REPEATABLE_READ:
+        case Connection.TRANSACTION_SERIALIZABLE:
+          return true;
+        default:
+          return false;
+      }
     }
   }
 
   @Override
   public boolean supportsDataDefinitionAndDataManipulationTransactions() throws SQLException {
-    return true;
+    return !connection.isStrict();
   }
 
   @Override
