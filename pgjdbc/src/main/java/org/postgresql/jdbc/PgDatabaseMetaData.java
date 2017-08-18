@@ -869,11 +869,15 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   public int getDefaultTransactionIsolation() throws SQLException {
-    return Connection.TRANSACTION_READ_COMMITTED;
+    if (connection.isStrict()) {
+      return Connection.TRANSACTION_NONE;
+    } else {
+      return Connection.TRANSACTION_READ_COMMITTED;
+    }
   }
 
   public boolean supportsTransactions() throws SQLException {
-    return true;
+    return !connection.isStrict();
   }
 
   /**
@@ -883,20 +887,24 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
    * READ_UNCOMMITTED and REPEATABLE_READ are accepted aliases for READ_COMMITTED.
    */
   public boolean supportsTransactionIsolationLevel(int level) throws SQLException {
-    if (level == Connection.TRANSACTION_SERIALIZABLE
-        || level == Connection.TRANSACTION_READ_COMMITTED) {
-      return true;
-    } else if (connection.haveMinimumServerVersion(ServerVersion.v8_0)
-        && (level == Connection.TRANSACTION_READ_UNCOMMITTED
-            || level == Connection.TRANSACTION_REPEATABLE_READ)) {
-      return true;
+    if (connection.isStrict()) {
+      return level == Connection.TRANSACTION_NONE;
     } else {
-      return false;
+      if (level == Connection.TRANSACTION_SERIALIZABLE
+          || level == Connection.TRANSACTION_READ_COMMITTED) {
+        return true;
+      } else if (connection.haveMinimumServerVersion(ServerVersion.v8_0)
+          && (level == Connection.TRANSACTION_READ_UNCOMMITTED
+          || level == Connection.TRANSACTION_REPEATABLE_READ)) {
+        return true;
+      } else {
+        return false;
+      }
     }
   }
 
   public boolean supportsDataDefinitionAndDataManipulationTransactions() throws SQLException {
-    return true;
+    return !connection.isStrict();
   }
 
   public boolean supportsDataManipulationTransactionsOnly() throws SQLException {
