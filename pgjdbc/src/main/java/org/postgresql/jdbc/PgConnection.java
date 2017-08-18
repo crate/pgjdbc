@@ -212,6 +212,10 @@ public class PgConnection implements BaseConnection {
 
     // Set read-only early if requested
     if (PGProperty.READ_ONLY.getBoolean(info)) {
+      if (strict) {
+        throw new PSQLException(GT.tr("Read-only connections are not supported."),
+            PSQLState.CONNECTION_UNABLE_TO_CONNECT);
+      }
       setReadOnly(true);
     }
 
@@ -711,6 +715,10 @@ public class PgConnection implements BaseConnection {
   @Override
   public void setReadOnly(boolean readOnly) throws SQLException {
     checkClosed();
+    if (readOnly) {
+      throwUnsupportedIfStrictMode("Setting transaction isolation READ ONLY not supported.");
+    }
+
     if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
       throw new PSQLException(
           GT.tr("Cannot change transaction read-only property in the middle of a transaction."),
@@ -731,6 +739,10 @@ public class PgConnection implements BaseConnection {
   public boolean isReadOnly() throws SQLException {
     checkClosed();
     return readOnly;
+  }
+
+  public boolean isStrict() throws SQLException {
+    return strict;
   }
 
   @Override
@@ -832,6 +844,7 @@ public class PgConnection implements BaseConnection {
   }
 
   public void setTransactionIsolation(int level) throws SQLException {
+    throwUnsupportedIfStrictMode("Setting transaction isolation not supported.");
     checkClosed();
 
     if (queryExecutor.getTransactionState() != TransactionState.IDLE) {

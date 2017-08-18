@@ -855,11 +855,15 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   public int getDefaultTransactionIsolation() throws SQLException {
-    return Connection.TRANSACTION_READ_COMMITTED;
+    if (connection.isStrict()) {
+      return Connection.TRANSACTION_NONE;
+    } else {
+      return Connection.TRANSACTION_READ_COMMITTED;
+    }
   }
 
   public boolean supportsTransactions() throws SQLException {
-    return true;
+    return !connection.isStrict();
   }
 
   /**
@@ -868,19 +872,23 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
    * READ_UNCOMMITTED and REPEATABLE_READ are accepted aliases for READ_COMMITTED.</p>
    */
   public boolean supportsTransactionIsolationLevel(int level) throws SQLException {
-    switch (level) {
-      case Connection.TRANSACTION_READ_UNCOMMITTED:
-      case Connection.TRANSACTION_READ_COMMITTED:
-      case Connection.TRANSACTION_REPEATABLE_READ:
-      case Connection.TRANSACTION_SERIALIZABLE:
-        return true;
-      default:
-        return false;
+    if (connection.isStrict()) {
+      return level == Connection.TRANSACTION_NONE;
+    } else {
+      switch (level) {
+        case Connection.TRANSACTION_READ_UNCOMMITTED:
+        case Connection.TRANSACTION_READ_COMMITTED:
+        case Connection.TRANSACTION_REPEATABLE_READ:
+        case Connection.TRANSACTION_SERIALIZABLE:
+          return true;
+        default:
+          return false;
+      }
     }
   }
 
   public boolean supportsDataDefinitionAndDataManipulationTransactions() throws SQLException {
-    return true;
+    return !connection.isStrict();
   }
 
   public boolean supportsDataManipulationTransactionsOnly() throws SQLException {
