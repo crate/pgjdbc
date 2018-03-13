@@ -1604,53 +1604,69 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
             col("PSEUDO_COLUMN", Oid.INT2));
   }
 
-  public ResultSet getPrimaryKeys(String catalog, String schema, String table)
-          throws SQLException {
-    StringBuilder sql = new StringBuilder("");
-    Field[] fields = new Field[6];
-    fields[0] = new Field("TABLE_CAT", Oid.VARCHAR);
-    fields[1] = new Field("TABLE_SCHEM", Oid.VARCHAR);
-    fields[2] = new Field("TABLE_NAME", Oid.VARCHAR);
-    fields[3] = new Field("COLUMN_NAME", Oid.VARCHAR);
-    fields[4] = new Field("KEY_SEQ", Oid.VARCHAR);
-    fields[5] = new Field("PK_NAME", Oid.VARCHAR);
+  public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
+    if (getCrateVersion().before("2.3.0")) {
+      Field[] fields = new Field[6];
+      fields[0] = new Field("TABLE_CAT", Oid.VARCHAR);
+      fields[1] = new Field("TABLE_SCHEM", Oid.VARCHAR);
+      fields[2] = new Field("TABLE_NAME", Oid.VARCHAR);
+      fields[3] = new Field("COLUMN_NAME", Oid.VARCHAR);
+      fields[4] = new Field("KEY_SEQ", Oid.VARCHAR);
+      fields[5] = new Field("PK_NAME", Oid.VARCHAR);
 
-    String schemaName = getCrateSchemaName();
-    sql.append("SELECT NULL AS TABLE_CAT, " +
-        schemaName + " AS TABLE_SCHEM, " +
-        "table_name as TABLE_NAME, " +
-        "constraint_name AS COLUMN_NAMES, " +
-        "0 AS KEY_SEQ, " +
-        "NULL AS PK_NAME " +
-        "FROM information_schema.table_constraints " +
-        "WHERE '_id' != ANY(constraint_name) ");
-    //noinspection StatementWithEmptyBody
-    if (schema != null) {
-      sql.append("AND " + schemaName + "= '" + connection.escapeString(schema) + "' ");
-    }
-    sql.append("AND table_name = '" + connection.escapeString(table) + "' ")
-            .append("ORDER BY TABLE_SCHEM, TABLE_NAME");
-    ResultSet rs = connection.createStatement().executeQuery(sql.toString());
-
-    List<byte[][]> tuples = new ArrayList<>();
-    while (rs.next()) {
-      byte[] tableCat = rs.getBytes(1);
-      byte[] tableSchem = rs.getBytes(2);
-      byte[] tableName = rs.getBytes(3);
-      byte[] pkName = rs.getBytes(6);
-      String[] pkColumsn = (String[]) rs.getArray(4).getArray();
-      for (int i = 0; i < pkColumsn.length; i++) {
-        byte[][] tuple = new byte[fields.length][];
-        tuple[0] = tableCat;
-        tuple[1] = tableSchem;
-        tuple[2] = tableName;
-        tuple[3] = connection.encodeString(pkColumsn[i]);
-        tuple[4] = connection.encodeString(Integer.toString(i));
-        tuple[5] = pkName;
-        tuples.add(tuple);
+      String schemaName = getCrateSchemaName();
+      StringBuilder sql = new StringBuilder("SELECT NULL AS TABLE_CAT, " +
+                                            "  " + schemaName + " AS TABLE_SCHEM, " +
+                                            "  table_name as TABLE_NAME, " +
+                                            "  constraint_name AS COLUMN_NAMES, " +
+                                            "  0 AS KEY_SEQ, " +
+                                            "  NULL AS PK_NAME " +
+                                            "FROM information_schema.table_constraints " +
+                                            "WHERE '_id' != ANY(constraint_name) " +
+                                            "  AND table_name = '" + connection.escapeString(table) + "' ");
+      if (schema != null) {
+        sql.append("  AND " + schemaName + "= '" + connection.escapeString(schema) + "' ");
       }
+      sql.append("ORDER BY TABLE_SCHEM, TABLE_NAME");
+      ResultSet rs = connection.createStatement().executeQuery(sql.toString());
+
+      List<byte[][]> tuples = new ArrayList<>();
+      while (rs.next()) {
+        byte[] tableCat = rs.getBytes(1);
+        byte[] tableSchem = rs.getBytes(2);
+        byte[] tableName = rs.getBytes(3);
+        byte[] pkName = rs.getBytes(6);
+        String[] pkColumsn = (String[]) rs.getArray(4).getArray();
+        for (int i = 0; i < pkColumsn.length; i++) {
+          byte[][] tuple = new byte[fields.length][];
+          tuple[0] = tableCat;
+          tuple[1] = tableSchem;
+          tuple[2] = tableName;
+          tuple[3] = connection.encodeString(pkColumsn[i]);
+          tuple[4] = connection.encodeString(Integer.toString(i));
+          tuple[5] = pkName;
+          tuples.add(tuple);
+        }
+      }
+      return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
+    } else {
+      StringBuilder sql = new StringBuilder("SELECT NULL AS \"TABLE_CAT\",\n" +
+                                            "  tc.table_catalog AS \"TABLE_SCHEM\",\n" +
+                                            "  tc.table_name AS \"TABLE_NAME\",\n" +
+                                            "  kcu.column_name AS \"COLUMN_NAME\",\n" +
+                                            "  kcu.ordinal_position AS \"KEY_SEQ\",\n" +
+                                            "  tc.constraint_name AS \"PK_NAME\"\n" +
+                                            "FROM information_schema.table_constraints tc\n" +
+                                            "  INNER JOIN information_schema.key_column_usage kcu\n" +
+                                            "  ON tc.constraint_name = kcu.constraint_name\n" +
+                                            "  AND tc.table_catalog = kcu.table_catalog \n" +
+                                            "WHERE tc.table_name = '" + connection.escapeString(table) + "'\n");
+      if (schema != null) {
+        sql.append("  AND tc.table_schema = '" + connection.escapeString(schema) + "'\n");
+      }
+      sql.append("ORDER BY \"TABLE_SCHEM\", \"TABLE_NAME\", \"KEY_SEQ\";");
+      return createMetaDataStatement().executeQuery(sql.toString());
     }
-    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 
   /**
