@@ -1016,9 +1016,9 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     String schemaName = getCrateSchemaName();
     String infoSchemaTableWhereClause = createInfoSchemaTableWhereClause(schemaName, schemaPattern, tableNamePattern,
             null).toString();
-    String stmt = getTablesStatement(schemaName, infoSchemaTableWhereClause);
+    StringBuilder stmt = getTablesStatement(schemaName, infoSchemaTableWhereClause);
 
-    ResultSet rs = connection.createStatement().executeQuery(stmt);
+    ResultSet rs = connection.createStatement().executeQuery(stmt.toString());
 
     List<byte[][]> tuples = new ArrayList<>();
     while (rs.next()) {
@@ -1054,16 +1054,22 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
 
-  private String getTablesStatement(String schemaName, String infoSchemaTableWhereClause) throws SQLException {
-    String select;
-    if (getCrateVersion().before("2.0.0")) {
-      select = "SELECT " + schemaName + ", table_name";
-    } else {
-      select = "SELECT " + schemaName + ", table_name, table_catalog, table_type, self_referencing_column_name, reference_generation";
+  private StringBuilder getTablesStatement(String schemaName, String infoSchemaTableWhereClause) throws SQLException {
+    StringBuilder builder = new StringBuilder("SELECT ")
+            .append(schemaName)
+            .append(", table_name");
+    if (getCrateVersion().compareTo("2.0.0") >= 0) {
+      builder.append(", table_catalog, table_type, self_referencing_column_name, reference_generation");
     }
-    return select +
-            " FROM information_schema.tables" + infoSchemaTableWhereClause +
-            " ORDER BY " + schemaName + ", table_name";
+    builder.append(" FROM information_schema.tables")
+            .append(infoSchemaTableWhereClause);
+    if (getCrateVersion().compareTo("2.0.0") >= 0) {
+      builder.append("AND table_type = 'BASE TABLE'");
+    }
+    builder.append(" ORDER BY ")
+            .append(schemaName)
+            .append(", table_name");
+    return builder;
   }
 
   private static String getReferenceGeneration(String referenceGeneration) {
