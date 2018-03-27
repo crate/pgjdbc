@@ -1166,16 +1166,23 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   private String getTablesStatement(String schemaName, String whereClause) throws SQLException {
-    String select;
-    if (getCrateVersion().before("2.0.0")) {
-      select = "SELECT " + schemaName + ", table_name";
-    } else {
-      select = "SELECT " + schemaName + ", table_name, table_catalog, table_type,"
-          + " self_referencing_column_name, reference_generation";
+    boolean sql99Columns = !getCrateVersion().before("2.0.0");
+    StringBuilder builder = new StringBuilder("SELECT ")
+        .append(schemaName)
+        .append(", table_name");
+    if (sql99Columns) {
+      builder.append(", table_catalog, table_type, self_referencing_column_name,"
+          + " reference_generation");
     }
-    return select
-        + " FROM information_schema.tables" + whereClause
-        + " ORDER BY " + schemaName + ", table_name";
+    builder.append(" FROM information_schema.tables")
+        .append(whereClause);
+    if (sql99Columns) {
+      builder.append(" AND table_type = 'BASE TABLE'");
+    }
+    builder.append(" ORDER BY ")
+        .append(schemaName)
+        .append(", table_name");
+    return builder.toString();
   }
 
   private static @Nullable String getReferenceGeneration(@Nullable String referenceGeneration) {
