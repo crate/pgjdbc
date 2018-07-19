@@ -705,7 +705,7 @@ public abstract class BaseDataSource implements Referenceable {
    * @see PGProperty#LOAD_BALANCE_HOSTS
    */
   public boolean getLoadBalanceHosts() {
-    return PGProperty.LOAD_BALANCE_HOSTS.isPresent(properties);
+    return PGProperty.LOAD_BALANCE_HOSTS.getBoolean(properties);
   }
 
   /**

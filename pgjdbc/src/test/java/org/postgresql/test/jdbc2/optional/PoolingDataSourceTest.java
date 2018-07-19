@@ -139,4 +139,8 @@ public class PoolingDataSourceTest extends BaseDataSourceTest {
     assertEquals(hc1, hc2);
   }
 
+  public void testLoadBalanceHostsIsEnabledByDefault() {
+      initializeDataSource();
+      assertTrue(bds.getLoadBalanceHosts());
+  }
 }
