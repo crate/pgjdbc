@@ -404,7 +404,7 @@ public enum PGProperty {
 
   LOAD_BALANCE_HOSTS(
       "loadBalanceHosts",
-      "false",
+      "true",
       "If disabled hosts are connected in the given order. If enabled hosts are chosen randomly from the set of suitable candidates"),
 
   /**
