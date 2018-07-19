@@ -5,19 +5,19 @@
 
 package org.postgresql.test.jdbc2.optional;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.fail;
-
+import org.junit.Test;
 import org.postgresql.ds.common.BaseDataSource;
 import org.postgresql.jdbc2.optional.PoolingDataSource;
-
-import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Minimal tests for pooling DataSource. Needs many more.
@@ -144,4 +144,9 @@ public class PoolingDataSourceTest extends BaseDataSourceTest {
     assertEquals(hc1, hc2);
   }
 
+  @Test
+  public void testLoadBalanceHostsIsEnabledByDefault() {
+      initializeDataSource();
+      assertTrue(bds.getLoadBalanceHosts());
+  }
 }
