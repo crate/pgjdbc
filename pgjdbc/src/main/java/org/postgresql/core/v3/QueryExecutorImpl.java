@@ -2486,7 +2486,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       // then we set the result count to reflect that we cannot provide the actual number
       // due to the JDBC field being an int rather than a long.
       countAsInt = Statement.SUCCESS_NO_INFO;
-    } else if (count > 0) {
+    } else if (count >= Integer.MIN_VALUE) {
       countAsInt = (int) count;
     }
     handler.handleCommandStatus(status, countAsInt, oid);

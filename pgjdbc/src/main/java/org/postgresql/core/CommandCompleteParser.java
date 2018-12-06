@@ -55,8 +55,8 @@ public final class CommandCompleteParser {
     try {
       int lastSpace = status.lastIndexOf(' ');
       // Status ends with a digit => it is ROWS
-      if (Parser.isDigitAt(status, lastSpace + 1)) {
-        rows = Parser.parseLong(status, lastSpace + 1, status.length());
+      if (Parser.isDigitOrMinusAt(status, lastSpace + 1)) {
+        rows = Parser.parseSignedLong(status, lastSpace + 1, status.length());
 
         if (Parser.isDigitAt(status, lastSpace - 1)) {
           int penultimateSpace = status.lastIndexOf(' ', lastSpace - 1);

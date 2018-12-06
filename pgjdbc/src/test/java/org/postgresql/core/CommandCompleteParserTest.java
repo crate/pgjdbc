@@ -28,7 +28,7 @@ public class CommandCompleteParserTest {
   public static Iterable<Object[]> data() {
     return Arrays.asList(new Object[][]{
         {"SELECT 0", 0, 0},
-        {"SELECT -42", 0, 0},
+        {"SELECT -42", 0, -42},
         {"SELECT", 0, 0},
         {"", 0, 0},
         {"A", 0, 0},
