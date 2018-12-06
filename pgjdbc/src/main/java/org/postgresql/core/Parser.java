@@ -29,6 +29,8 @@ import java.util.List;
  * @author Christopher Deckers (chrriis@gmail.com)
  */
 public class Parser {
+  private static final char MINUS_SIGN = '-';
+
   /**
    * Parses JDBC query into PostgreSQL's native format. Several queries might be given if separated
    * by semicolon.
@@ -818,6 +820,40 @@ public class Parser {
       res = res * 10 + digitAt(s, beginIndex);
     }
     return res;
+  }
+
+  /**
+   * Faster version of {@link Long#parseLong(String)} for a substring that may carry a sign.
+   *
+   * @param s string to parse
+   * @param beginIndex begin index
+   * @param endIndex end index
+   * @return long value
+   */
+  static long parseSignedLong(String s, int beginIndex, int endIndex) {
+    boolean isNegative = s.charAt(beginIndex) == MINUS_SIGN;
+    if (isNegative) {
+      beginIndex++;
+    }
+    long res = parseLong(s, beginIndex, endIndex);
+    if (isNegative) {
+      return res * -1;
+    }
+    return res;
+  }
+
+  /**
+   * Returns true if a given string {@code s} has digit or '-' character at position {@code pos}.
+   * @param s input string
+   * @param pos position (0-based)
+   * @return true if input string s has digit at position pos
+   */
+  static boolean isDigitOrMinusAt(String s, int pos) {
+    if (pos <= 0 || pos >= s.length()) {
+      return false;
+    }
+    char c = s.charAt(pos);
+    return Character.isDigit(c) || c == MINUS_SIGN;
   }
 
   /**
