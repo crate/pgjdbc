@@ -1306,7 +1306,11 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
         tuple[12] = rs.getBytes("column_default");
         tuple[15] = rs.getBytes("character_octet_length");
         tuple[17] = connection.encodeString(rs.getBoolean("is_nullable") ? "YES" : "NO");
-        tuple[23] = connection.encodeString(rs.getBoolean("is_generated") ? "YES" : "NO");
+        if (getCrateVersion().before("4.0.0")) {
+          tuple[23] = connection.encodeString(rs.getBoolean("is_generated") ? "YES" : "NO");
+        } else {
+          tuple[23] = rs.getBytes("is_generated");
+        }
       }
         tuples.add(tuple);
     }
