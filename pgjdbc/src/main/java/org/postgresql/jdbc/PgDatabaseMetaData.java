@@ -1656,17 +1656,14 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       }
       return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
     } else {
-      StringBuilder sql = new StringBuilder("SELECT NULL AS \"TABLE_CAT\",\n" +
-                                            "  tc.table_catalog AS \"TABLE_SCHEM\",\n" +
-                                            "  tc.table_name AS \"TABLE_NAME\",\n" +
-                                            "  kcu.column_name AS \"COLUMN_NAME\",\n" +
-                                            "  kcu.ordinal_position AS \"KEY_SEQ\",\n" +
-                                            "  tc.constraint_name AS \"PK_NAME\"\n" +
-                                            "FROM information_schema.table_constraints tc\n" +
-                                            "  INNER JOIN information_schema.key_column_usage kcu\n" +
-                                            "  ON tc.constraint_name = kcu.constraint_name\n" +
-                                            "  AND tc.table_catalog = kcu.table_catalog \n" +
-                                            "WHERE tc.table_name = '" + connection.escapeString(table) + "'\n");
+      StringBuilder sql = new StringBuilder("SELECT kcu.table_catalog AS \"TABLE_CAT\",\n" +
+              "  kcu.table_schema AS \"TABLE_SCHEM\",\n" +
+              "  kcu.table_name AS \"TABLE_NAME\",\n" +
+              "  kcu.column_name AS \"COLUMN_NAME\",\n" +
+              "  kcu.ordinal_position AS \"KEY_SEQ\",\n" +
+              "  kcu.constraint_name AS \"PK_NAME\"\n" +
+              " FROM information_schema.key_column_usage kcu\n" +
+              " WHERE kcu.table_name = '" + connection.escapeString(table) + "'\n");
       if (schema != null) {
         sql.append("  AND tc.table_schema = '" + connection.escapeString(schema) + "'\n");
       }
