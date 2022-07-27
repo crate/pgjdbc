@@ -1611,7 +1611,8 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
-    if (getCrateVersion().before("2.3.0")) {
+    CrateVersion version = getCrateVersion();
+    if (version.before("2.3.0")) {
       Field[] fields = new Field[6];
       fields[0] = new Field("TABLE_CAT", Oid.VARCHAR);
       fields[1] = new Field("TABLE_SCHEM", Oid.VARCHAR);
@@ -1656,8 +1657,24 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       }
       return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
     } else {
-      StringBuilder sql = new StringBuilder("SELECT kcu.table_catalog AS \"TABLE_CAT\",\n" +
-              "  kcu.table_schema AS \"TABLE_SCHEM\",\n" +
+
+      // Before 3.0.0 kcu.table_schema used to return 'public' (see https://github.com/crate/crate/pull/7028/)
+      // and we used table_catalog field to get a schema.
+      // With https://github.com/crate/crate/pull/12652 table_catalog returns 'crate' but we can safely use table_schema for versions > 3.0.0.
+      String schemaField = "table_catalog"; // Before 3.0.0
+      if (version.after("3.0.0")) {
+        schemaField = "table_schema";
+      }
+
+      // Before 5.1.0 catalog used to return schema and we returned NULL, from 5.1.0 can use actual catalog ('crate').
+      String catalogField;
+      if (version.before("5.1.0")) {
+        catalogField = "NULL";
+      } else {
+        catalogField = "kcu.table_catalog";
+      }
+      StringBuilder sql = new StringBuilder("SELECT " + catalogField + " AS \"TABLE_CAT\",\n" +
+              "  kcu." + schemaField + " AS \"TABLE_SCHEM\",\n" +
               "  kcu.table_name AS \"TABLE_NAME\",\n" +
               "  kcu.column_name AS \"COLUMN_NAME\",\n" +
               "  kcu.ordinal_position AS \"KEY_SEQ\",\n" +
@@ -1665,7 +1682,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
               " FROM information_schema.key_column_usage kcu\n" +
               " WHERE kcu.table_name = '" + connection.escapeString(table) + "'\n");
       if (schema != null) {
-        sql.append("  AND tc.table_schema = '" + connection.escapeString(schema) + "'\n");
+        sql.append("  AND kcu." + schemaField + " = '" + connection.escapeString(schema) + "'\n");
       }
       sql.append("ORDER BY \"TABLE_SCHEM\", \"TABLE_NAME\", \"KEY_SEQ\";");
       return createMetaDataStatement().executeQuery(sql.toString());
