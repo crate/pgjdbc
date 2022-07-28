@@ -1722,7 +1722,8 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getPrimaryKeys(@Nullable String catalog, @Nullable String schema, String table)
       throws SQLException {
-    if (getCrateVersion().before("2.3.0")) {
+    CrateVersion version = getCrateVersion();
+    if (version.before("2.3.0")) {
       Field[] fields = new Field[6];
       fields[0] = new Field("TABLE_CAT", Oid.VARCHAR);
       fields[1] = new Field("TABLE_SCHEM", Oid.VARCHAR);
@@ -1767,8 +1768,15 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       }
       return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
     } else {
-      StringBuilder sql = new StringBuilder("SELECT kcu.table_catalog AS \"TABLE_CAT\",\n"
-          + "  kcu.table_schema AS \"TABLE_SCHEM\",\n"
+      // Up to CrateDB 3.0 key_column_usage.table_schema reports "public" for every table, so
+      // the schema has to be read out of table_catalog there.
+      String schemaField = version.after("3.0.0") ? "table_schema" : "table_catalog";
+      // table_catalog only became a real catalog name in CrateDB 5.1; before that it held the
+      // schema, which does not belong in TABLE_CAT.
+      String catalogField = version.before("5.1.0") ? "NULL" : "kcu.table_catalog";
+
+      StringBuilder sql = new StringBuilder("SELECT " + catalogField + " AS \"TABLE_CAT\",\n"
+          + "  kcu." + schemaField + " AS \"TABLE_SCHEM\",\n"
           + "  kcu.table_name AS \"TABLE_NAME\",\n"
           + "  kcu.column_name AS \"COLUMN_NAME\",\n"
           + "  kcu.ordinal_position AS \"KEY_SEQ\",\n"
@@ -1776,7 +1784,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
           + " FROM information_schema.key_column_usage kcu\n"
           + " WHERE kcu.table_name = '" + connection.escapeString(table) + "'\n");
       if (schema != null) {
-        sql.append("  AND kcu.table_schema = '" + connection.escapeString(schema) + "'\n");
+        sql.append("  AND kcu." + schemaField + " = '" + connection.escapeString(schema) + "'\n");
       }
       sql.append("ORDER BY \"TABLE_SCHEM\", \"TABLE_NAME\", \"KEY_SEQ\";");
       return createMetaDataStatement().executeQuery(sql.toString());
