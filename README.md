@@ -20,6 +20,8 @@ queries on internal PostgreSQL tables which are not supported by CrateDB.
 It is used by the [CrateDB legacy JDBC driver] for covering certain usage
 scenarios around CrateDB and is not released otherwise.
 
+You are welcome to inspect the [changelog of the fork].
+
 
 ## Contributing
 
@@ -27,6 +29,7 @@ For information on how to contribute to the project see the [Contributing
 Guidelines](CONTRIBUTING.md).
 
 
+[changelog of the fork]: ./CHANGELOG-FORK.md
 [CrateDB]: https://github.com/crate/crate
 [CrateDB legacy JDBC driver]: https://crate.io/docs/jdbc/
 [PostgreSQL JDBC Driver]: https://jdbc.postgresql.org/
