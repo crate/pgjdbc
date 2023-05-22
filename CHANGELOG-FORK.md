@@ -5,6 +5,7 @@ Changes in comparison to the upstream driver, forked at version REL42.2.5.
 ## [Unreleased]
 - Adjust `postgresql.util.StreamWrapper` for compatibility with newer versions of Java.
   `StreamWrapper.finalize()` needs to catch `Throwable` now.
+- Update `jackson-databind` to 2.15.1
 
 ## [x.x.x] (2022-07-28)
 - Get schema instead of catalog and simplify get primary keys query (#39)
