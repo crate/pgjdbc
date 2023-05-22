@@ -13,13 +13,15 @@ PostgreSQL native network protocol.
 
 ## Details
 
-This is a fork of the vanilla [PostgreSQL JDBC Driver] to support specific
-details for [CrateDB], which can be inspected at [differences to the upstream
-pgJDBC]. For example, this is to avoid certain statements and queries on
-internal PostgreSQL tables which are not supported by CrateDB.
+This is a fork of the vanilla [PostgreSQL JDBC Driver] to support specific details for
+[CrateDB]. For example, this is to avoid certain statements and queries on internal
+PostgreSQL tables which are not supported by CrateDB.
 
 It is used by the [CrateDB legacy JDBC driver] for covering certain usage
 scenarios around CrateDB and is not released otherwise.
+
+You are welcome to inspect the [changelog of the fork] and the [differences to the
+upstream pgJDBC].
 
 
 ## Contributing
@@ -28,6 +30,7 @@ For information on how to contribute to the project see the [Contributing
 Guidelines](CONTRIBUTING.md).
 
 
+[changelog of the fork]: ./CHANGELOG-FORK.md
 [CrateDB]: https://github.com/crate/crate
 [CrateDB legacy JDBC driver]: https://crate.io/docs/jdbc/
 [differences to the upstream pgJDBC]: https://github.com/pgjdbc/pgjdbc/compare/master...crate:pgjdbc:REL42.2.5_crate
