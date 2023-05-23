@@ -1,0 +1,46 @@
+name: Test
+on:
+
+  pull_request:
+  push:
+    branches: [ "REL42.2.5_crate" ]
+
+  # Allow job to be triggered manually.
+  workflow_dispatch:
+
+# Cancel in-progress jobs when pushing to the same branch.
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  test:
+    name: "Java ${{ matrix.java-version }} on ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ "ubuntu-latest" ]
+        java-version: [ "8", "11", "17", "19", "20" ]
+
+    steps:
+
+      - name: Acquire sources
+        uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "${{ matrix.java-version }}"
+          cache: "maven"
+
+      - name: Run linter and software tests
+        run: |
+          
+          # Run linter
+          mvn checkstyle:check
+
+          # TODO: Run software tests.
+          # https://github.com/crate/pgjdbc/issues/48
+          # mvn package
