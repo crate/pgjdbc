@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2016, PostgreSQL Global Development Group
+ * See the LICENSE file in the project root for more information.
+ */
+
 package org.postgresql.jdbc;
 
 public class CrateVersion implements Comparable<String> {
@@ -14,7 +19,7 @@ public class CrateVersion implements Comparable<String> {
     String[] v2 = o.split("\\.");
     int i = 0;
     while (i < v1.length && i < v2.length && v1[i].equals(v2[i])) {
-        i++;
+      i++;
     }
     if (i < v1.length && i < v2.length) {
       int diff = Integer.valueOf(v1[i]).compareTo(Integer.valueOf(v2[i]));

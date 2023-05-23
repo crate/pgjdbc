@@ -41,6 +41,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   private int INDEX_MAX_KEYS = 0; // maximum number of keys in an index.
 
   private static final Map<String, String> REFERENCE_GENERATIONS;
+
   static {
     Map<String, String> referenceMaps = new HashMap<>();
     referenceMaps.put("SYSTEM GENERATED", "SYSTEM");
@@ -257,46 +258,46 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   public String getSQLKeywords() throws SQLException {
     connection.checkClosed();
-    return "alias,all,alter,analyzer,and,any,array,as,asc," +
-          "always,array,add," +
-          "bernoulli,between,blob,boolean,by,byte,begin," +
-          "case,cast,catalogs,char_filters,clustered,coalesce,columns," +
-          "constraint,copy,create,cross,current,current_date,current_time," +
-          "current_timestamp,current_schema, column," +
-          "date,day,delete,desc,describe,directory,distinct,distributed," +
-          "double,drop,dynamic,delete,duplicate,default," +
-          "else,end,escape,except,exists,explain,extends,extract," +
-          "false,first,float,following,for,format,from,full,fulltext,functions," +
-          "graphviz,group,geo_point,geo_shape,global,generated," +
-          "having,hour," +
-          "if,ignored,in,index,inner,insert,int,integer,intersect,interval," +
-          "into,ip,is,isolation," +
-          "join," +
-          "last,left,like,limit,logical,long,local,level," +
-          "materialized,minute,month,match," +
-          "natural,not,null,nulls," +
-          "object,off,offset,on,or,order,outer,over,optmize,only," +
-          "partition,partitioned,partitions,plain,preceding,primary_key," +
-          "range,recursive,refresh,reset,right,row,rows,repository,restore," +
-          "schemas,second,select,set,shards,short,show,some,stratify," +
-          "strict,string_type,substring,system,select,snapshot,session," +
-          "table,tables,tablesample,text,then,time,timestamp,to,tokenizer," +
-          "token_filters,true,type,try_cast,transaction,tablesample," +
-          "transient," +
-          "unbounded,union,update,using," +
-          "values,view," +
-          "when,where,with," +
-          "year";
+    return "alias,all,alter,analyzer,and,any,array,as,asc,"
+          + "always,array,add,"
+          + "bernoulli,between,blob,boolean,by,byte,begin,"
+          + "case,cast,catalogs,char_filters,clustered,coalesce,columns,"
+          + "constraint,copy,create,cross,current,current_date,current_time,"
+          + "current_timestamp,current_schema, column,"
+          + "date,day,delete,desc,describe,directory,distinct,distributed,"
+          + "double,drop,dynamic,delete,duplicate,default,"
+          + "else,end,escape,except,exists,explain,extends,extract,"
+          + "false,first,float,following,for,format,from,full,fulltext,functions,"
+          + "graphviz,group,geo_point,geo_shape,global,generated,"
+          + "having,hour,"
+          + "if,ignored,in,index,inner,insert,int,integer,intersect,interval,"
+          + "into,ip,is,isolation,"
+          + "join,"
+          + "last,left,like,limit,logical,long,local,level,"
+          + "materialized,minute,month,match,"
+          + "natural,not,null,nulls,"
+          + "object,off,offset,on,or,order,outer,over,optmize,only,"
+          + "partition,partitioned,partitions,plain,preceding,primary_key,"
+          + "range,recursive,refresh,reset,right,row,rows,repository,restore,"
+          + "schemas,second,select,set,shards,short,show,some,stratify,"
+          + "strict,string_type,substring,system,select,snapshot,session,"
+          + "table,tables,tablesample,text,then,time,timestamp,to,tokenizer,"
+          + "token_filters,true,type,try_cast,transaction,tablesample,"
+          + "transient,"
+          + "unbounded,union,update,using,"
+          + "values,view,"
+          + "when,where,with,"
+          + "year";
   }
 
   public String getNumericFunctions() throws SQLException {
-    return "abs,ceil,floor,ln,log,random,round,sqrt,sin,asin,cos," +
-           "acos,tan,atan";
+    return "abs,ceil,floor,ln,log,random,round,sqrt,sin,asin,cos,"
+           + "acos,tan,atan";
   }
 
   public String getStringFunctions() throws SQLException {
-    return "concat,format,substr,char_length,bit_length,octet_length,"+
-           "lower,upper";
+    return "concat,format,substr,char_length,bit_length,octet_length,"
+           + "lower,upper";
   }
 
   public String getSystemFunctions() throws SQLException {
@@ -984,8 +985,8 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getTables(String catalog,
                              String schemaPattern,
                              String tableNamePattern,
-                             String types[]) throws SQLException {
-    Field fields[] = new Field[10];
+                             String[] types) throws SQLException {
+    Field[] fields = new Field[10];
     fields[0] = new Field("TABLE_CAT", Oid.VARCHAR);
     fields[1] = new Field("TABLE_SCHEM", Oid.VARCHAR);
     fields[2] = new Field("TABLE_NAME", Oid.VARCHAR);
@@ -1071,7 +1072,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   public CrateVersion getCrateVersion() throws SQLException {
     ResultSet rs = connection.createStatement()
-      .executeQuery("select version['number'] as version from sys.nodes limit 1");
+            .executeQuery("select version['number'] as version from sys.nodes limit 1");
     if (rs.next()) {
       return new CrateVersion(rs.getString("version"));
     }
@@ -1224,7 +1225,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public ResultSet getTableTypes() throws SQLException {
-    Field f[] = new Field[1];
+    Field[] f = new Field[1];
     List<byte[][]> v = new ArrayList<>();
     f[0] = new Field("TABLE_TYPE", Oid.VARCHAR);
     v.add(new byte[][] {connection.encodeString("SYSTEM TABLE")});
@@ -1312,7 +1313,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
           tuple[23] = rs.getBytes("is_generated");
         }
       }
-        tuples.add(tuple);
+      tuples.add(tuple);
     }
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, tuples);
   }
@@ -1322,15 +1323,15 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     if (getCrateVersion().before("2.0.0")) {
       select = "SELECT " + schemaName + ", table_name, column_name, data_type, ordinal_position";
     } else {
-      select = "SELECT " + schemaName + ", table_name, column_name, data_type, ordinal_position, table_catalog," +
-              " numeric_precision, numeric_precision_radix, column_default, character_octet_length, is_nullable," +
-              "is_generated";
+      select = "SELECT " + schemaName + ", table_name, column_name, data_type, ordinal_position, table_catalog,"
+              + " numeric_precision, numeric_precision_radix, column_default, character_octet_length, is_nullable,"
+              + "is_generated";
     }
-    return select +
-            " FROM information_schema.columns " +
-            infoSchemaTableWhereClause +
-            " AND column_name NOT LIKE '%[%]' AND column_name NOT LIKE '%.%'" +
-            " ORDER BY " + schemaName + ", table_name, ordinal_position";
+    return select
+            + " FROM information_schema.columns "
+            + infoSchemaTableWhereClause
+            + " AND column_name NOT LIKE '%[%]' AND column_name NOT LIKE '%.%'"
+            + " ORDER BY " + schemaName + ", table_name, ordinal_position";
   }
 
   private int sqlTypeOfCrateType(String dataType) {
@@ -1602,15 +1603,15 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       fields[5] = new Field("PK_NAME", Oid.VARCHAR);
 
       String schemaName = getCrateSchemaName();
-      StringBuilder sql = new StringBuilder("SELECT NULL AS TABLE_CAT, " +
-                                            "  " + schemaName + " AS TABLE_SCHEM, " +
-                                            "  table_name as TABLE_NAME, " +
-                                            "  constraint_name AS COLUMN_NAMES, " +
-                                            "  0 AS KEY_SEQ, " +
-                                            "  NULL AS PK_NAME " +
-                                            "FROM information_schema.table_constraints " +
-                                            "WHERE '_id' != ANY(constraint_name) " +
-                                            "  AND table_name = '" + connection.escapeString(table) + "' ");
+      StringBuilder sql = new StringBuilder("SELECT NULL AS TABLE_CAT, "
+                                            + "  " + schemaName + " AS TABLE_SCHEM, "
+                                            + "  table_name as TABLE_NAME, "
+                                            + "  constraint_name AS COLUMN_NAMES, "
+                                            + "  0 AS KEY_SEQ, "
+                                            + "  NULL AS PK_NAME "
+                                            + "FROM information_schema.table_constraints "
+                                            + "WHERE '_id' != ANY(constraint_name) "
+                                            + "  AND table_name = '" + connection.escapeString(table) + "' ");
       if (schema != null) {
         sql.append("  AND " + schemaName + "= '" + connection.escapeString(schema) + "' ");
       }
@@ -1653,14 +1654,14 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       } else {
         catalogField = "kcu.table_catalog";
       }
-      StringBuilder sql = new StringBuilder("SELECT " + catalogField + " AS \"TABLE_CAT\",\n" +
-              "  kcu." + schemaField + " AS \"TABLE_SCHEM\",\n" +
-              "  kcu.table_name AS \"TABLE_NAME\",\n" +
-              "  kcu.column_name AS \"COLUMN_NAME\",\n" +
-              "  kcu.ordinal_position AS \"KEY_SEQ\",\n" +
-              "  kcu.constraint_name AS \"PK_NAME\"\n" +
-              " FROM information_schema.key_column_usage kcu\n" +
-              " WHERE kcu.table_name = '" + connection.escapeString(table) + "'\n");
+      StringBuilder sql = new StringBuilder("SELECT " + catalogField + " AS \"TABLE_CAT\",\n"
+              + "  kcu." + schemaField + " AS \"TABLE_SCHEM\",\n"
+              + "  kcu.table_name AS \"TABLE_NAME\",\n"
+              + "  kcu.column_name AS \"COLUMN_NAME\",\n"
+              + "  kcu.ordinal_position AS \"KEY_SEQ\",\n"
+              + "  kcu.constraint_name AS \"PK_NAME\"\n"
+              + " FROM information_schema.key_column_usage kcu\n"
+              + " WHERE kcu.table_name = '" + connection.escapeString(table) + "'\n");
       if (schema != null) {
         sql.append("  AND kcu." + schemaField + " = '" + connection.escapeString(schema) + "'\n");
       }
@@ -1822,17 +1823,17 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   public ResultSet getTypeInfo() throws SQLException {
 
-    Field f[] = new Field[18];
+    Field[] f = new Field[18];
     List<byte[][]> v = new ArrayList<>(); // The new ResultSet tuple stuff
 
-    byte bNullable[] = connection.encodeString(Integer.toString(typeNullable));
-    byte bSearchable[] = connection.encodeString(Integer.toString(typeSearchable));
-    byte bPredBasic[] = connection.encodeString(Integer.toString(typePredBasic));
-    byte bPredNone[] = connection.encodeString(Integer.toString(typePredNone));
-    byte bTrue[] = connection.encodeString("t");
-    byte bFalse[] = connection.encodeString("f");
-    byte bZero[] = connection.encodeString("0");
-    byte b10[] = connection.encodeString("10");
+    byte[] bNullable = connection.encodeString(Integer.toString(typeNullable));
+    byte[] bSearchable = connection.encodeString(Integer.toString(typeSearchable));
+    byte[] bPredBasic = connection.encodeString(Integer.toString(typePredBasic));
+    byte[] bPredNone = connection.encodeString(Integer.toString(typePredNone));
+    byte[] bTrue = connection.encodeString("t");
+    byte[] bFalse = connection.encodeString("f");
+    byte[] bZero = connection.encodeString("0");
+    byte[] b10 = connection.encodeString("10");
 
     f[0] = col("TYPE_NAME");
     f[1] = col("DATA_TYPE", Oid.INT2);
@@ -2075,8 +2076,8 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     v.add(row.clone());
 
     String[] arrayTypes = new String[]{"string_array", "ip_array", "long_array",
-            "integer_array", "short_array", "boolean_array", "byte_array",
-            "float_array", "double_array", "object_array"};
+        "integer_array", "short_array", "boolean_array", "byte_array",
+        "float_array", "double_array", "object_array"};
     for (int i = 11; i < 11 + arrayTypes.length; i++) {
       row[0] = connection.encodeString(arrayTypes[i - 11]);
       row[1] = connection.encodeString(Integer.toString(Types.ARRAY));
@@ -2263,7 +2264,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
             col("SPECIFIC_NAME"));
   }
 
-    public ResultSet getFunctionColumns(String catalog, String schemaPattern,
+  public ResultSet getFunctionColumns(String catalog, String schemaPattern,
                                         String functionNamePattern, String columnNamePattern)
             throws SQLException {
     return emptyResult(
@@ -2430,7 +2431,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     return new Field(name, Oid.VARCHAR);
   }
 
-  private final ResultSet emptyResult(Field... fields) throws SQLException {
+  private ResultSet emptyResult(Field... fields) throws SQLException {
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(fields, Collections.<byte[][]>emptyList());
   }
 }

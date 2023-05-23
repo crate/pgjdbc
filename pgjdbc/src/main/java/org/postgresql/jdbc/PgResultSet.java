@@ -5,7 +5,6 @@
 
 package org.postgresql.jdbc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.PGResultSetMetaData;
 import org.postgresql.PGStatement;
 import org.postgresql.core.BaseConnection;
@@ -26,6 +25,8 @@ import org.postgresql.util.PGobject;
 import org.postgresql.util.PGtokenizer;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayInputStream;
 import java.io.CharArrayReader;
@@ -2952,8 +2953,8 @@ public class PgResultSet implements ResultSet, org.postgresql.PGRefCursorResultS
 
   public static Byte toByte(String s) throws SQLException {
     if (s != null) {
-        s = s.trim();
-        return Byte.parseByte(s);
+      s = s.trim();
+      return Byte.parseByte(s);
     }
     return 0; // SQL NULL
   }

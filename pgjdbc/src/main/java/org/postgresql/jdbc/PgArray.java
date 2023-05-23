@@ -5,7 +5,6 @@
 
 package org.postgresql.jdbc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.BaseStatement;
 import org.postgresql.core.Encoding;
@@ -17,6 +16,8 @@ import org.postgresql.util.ByteConverter;
 import org.postgresql.util.GT;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.math.BigDecimal;
