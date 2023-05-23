@@ -41,6 +41,5 @@ jobs:
           # Run linter
           mvn checkstyle:check
 
-          # TODO: Run software tests.
-          # https://github.com/crate/pgjdbc/issues/48
-          # mvn package
+          # Run software tests.
+          mvn package
