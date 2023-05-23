@@ -5,8 +5,6 @@
 
 package org.postgresql.jdbc;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.Driver;
 import org.postgresql.PGNotification;
 import org.postgresql.PGProperty;
@@ -23,7 +21,6 @@ import org.postgresql.core.QueryExecutor;
 import org.postgresql.core.ReplicationProtocol;
 import org.postgresql.core.ResultHandlerBase;
 import org.postgresql.core.ServerVersion;
-import org.postgresql.core.SqlCommand;
 import org.postgresql.core.TransactionState;
 import org.postgresql.core.TypeInfo;
 import org.postgresql.core.Utils;
@@ -39,6 +36,9 @@ import org.postgresql.util.PGBinaryObject;
 import org.postgresql.util.PGobject;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.sql.Array;
@@ -751,8 +751,8 @@ public class PgConnection implements BaseConnection {
     if (this.autoCommit == autoCommit) {
       return;
     } else if (!autoCommit && strict) {
-      throw new SQLFeatureNotSupportedException("The auto-commit mode cannot be disabled in strict mode. "+
-              "The Crate JDBC driver does not support manual commit.");
+      throw new SQLFeatureNotSupportedException("The auto-commit mode cannot be disabled in strict mode. "
+              + "The Crate JDBC driver does not support manual commit.");
     }
     this.autoCommit = autoCommit;
   }
@@ -788,8 +788,8 @@ public class PgConnection implements BaseConnection {
     checkClosed();
 
     if (autoCommit && strict) {
-      throw new SQLFeatureNotSupportedException("The commit operation is not allowed. " +
-            "The Crate JDBC driver does not support manual commit.");
+      throw new SQLFeatureNotSupportedException("The commit operation is not allowed. "
+            + "The Crate JDBC driver does not support manual commit.");
     }
   }
 
