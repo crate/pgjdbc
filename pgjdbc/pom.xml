@@ -219,7 +219,7 @@
             <plugin>
               <groupId>org.apache.maven.plugins</groupId>
               <artifactId>maven-assembly-plugin</artifactId>
-              <version>2.4.1</version> <!-- override version to older one -->
+              <version>3.7.1</version> <!-- override version to older one -->
               <dependencies>
                 <dependency>
                   <groupId>org.codehaus.plexus</groupId>
