@@ -523,6 +523,11 @@ public enum PGProperty {
       "Puts this connection in read-only mode"),
 
   /**
+   * Puts this connection in strict mode.
+   */
+  STRICT("strict", "false", "Force driver to be compliant with the JDBC specification. Crate specific"),
+
+  /**
    * Connection parameter to control behavior when
    * {@link Connection#setReadOnly(boolean)} is set to {@code true}.
    */
