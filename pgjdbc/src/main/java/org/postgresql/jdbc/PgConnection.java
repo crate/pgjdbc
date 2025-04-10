@@ -140,7 +140,7 @@ public class PgConnection implements BaseConnection {
   // Data initialized on construction:
   //
   private final Properties clientInfo;
-  
+
   // Crate-specific strict mode
   private boolean strict = false;
 
@@ -955,8 +955,8 @@ public class PgConnection implements BaseConnection {
     if (this.autoCommit == autoCommit) {
       return;
     } else if (!autoCommit && strict) {
-      throw new SQLFeatureNotSupportedException("The auto-commit mode cannot be disabled in strict mode. "+
-              "The Crate JDBC driver does not support manual commit.");
+      throw new SQLFeatureNotSupportedException("The auto-commit mode cannot be disabled in strict mode. "
+              + "The Crate JDBC driver does not support manual commit.");
     }
 
     if (!this.autoCommit) {
@@ -1013,8 +1013,8 @@ public class PgConnection implements BaseConnection {
     checkClosed();
 
     if (autoCommit && strict) {
-      throw new SQLFeatureNotSupportedException("The commit operation is not allowed. " +
-            "The Crate JDBC driver does not support manual commit.");
+      throw new SQLFeatureNotSupportedException("The commit operation is not allowed. "
+            + "The Crate JDBC driver does not support manual commit.");
     }
 
     if (autoCommit) {
