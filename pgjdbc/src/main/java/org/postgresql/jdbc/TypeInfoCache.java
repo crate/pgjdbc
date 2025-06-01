@@ -90,14 +90,14 @@ public class TypeInfoCache implements TypeInfo {
       {"numeric", Oid.NUMERIC, Types.NUMERIC, "java.math.BigDecimal", Oid.NUMERIC_ARRAY},
       {"float4", Oid.FLOAT4, Types.REAL, "java.lang.Float", Oid.FLOAT4_ARRAY},
       {"float8", Oid.FLOAT8, Types.DOUBLE, "java.lang.Double", Oid.FLOAT8_ARRAY},
-      {"char", Oid.CHAR, Types.CHAR, "java.lang.String", Oid.CHAR_ARRAY},
+      {"byte", Oid.CHAR, Types.TINYINT, "java.lang.Byte", Oid.CHAR_ARRAY},
       {"bpchar", Oid.BPCHAR, Types.CHAR, "java.lang.String", Oid.BPCHAR_ARRAY},
       {"varchar", Oid.VARCHAR, Types.VARCHAR, "java.lang.String", Oid.VARCHAR_ARRAY},
       {"varbit", Oid.VARBIT, Types.OTHER, "java.lang.String", Oid.VARBIT_ARRAY},
       {"text", Oid.TEXT, Types.VARCHAR, "java.lang.String", Oid.TEXT_ARRAY},
       {"name", Oid.NAME, Types.VARCHAR, "java.lang.String", Oid.NAME_ARRAY},
       {"bytea", Oid.BYTEA, Types.BINARY, "[B", Oid.BYTEA_ARRAY},
-      {"bool", Oid.BOOL, Types.BIT, "java.lang.Boolean", Oid.BOOL_ARRAY},
+      {"boolean", Oid.BOOL, Types.BOOLEAN, "java.lang.Boolean", Oid.BOOL_ARRAY},
       {"bit", Oid.BIT, Types.BIT, "java.lang.Boolean", Oid.BIT_ARRAY},
       {"date", Oid.DATE, Types.DATE, "java.sql.Date", Oid.DATE_ARRAY},
       {"time", Oid.TIME, Types.TIME, "java.sql.Time", Oid.TIME_ARRAY},
@@ -106,41 +106,36 @@ public class TypeInfoCache implements TypeInfo {
       {"timestamptz", Oid.TIMESTAMPTZ, Types.TIMESTAMP, "java.sql.Timestamp",
           Oid.TIMESTAMPTZ_ARRAY},
       {"refcursor", Oid.REF_CURSOR, Types.REF_CURSOR, "java.sql.ResultSet", Oid.REF_CURSOR_ARRAY},
-      {"json", Oid.JSON, Types.OTHER, "org.postgresql.util.PGobject", Oid.JSON_ARRAY},
+      {"json", Oid.JSON, Types.JAVA_OBJECT, "org.postgresql.util.PGobject", Oid.JSON_ARRAY},
       {"point", Oid.POINT, Types.OTHER, "org.postgresql.geometric.PGpoint", Oid.POINT_ARRAY},
       {"box", Oid.BOX, Types.OTHER, "org.postgresql.geometric.PGBox", Oid.BOX_ARRAY}
   };
 
   /**
-   * PG maps several alias to real type names. When we do queries against pg_catalog, we must use
-   * the real type, not an alias, so use this mapping.
-   * <p>
-   * Additional values used at runtime (including case variants) will be added to the map.
-   * </p>
+   * This mapping provides aliases for conversion between Crate types and PostgreSQL types.
    */
   private static final ConcurrentMap<String, String> TYPE_ALIASES = new ConcurrentHashMap<>(30);
 
   static {
     TYPE_ALIASES.put("bool", "bool");
-    TYPE_ALIASES.put("boolean", "bool");
-    TYPE_ALIASES.put("smallint", "int2");
+    TYPE_ALIASES.put("short", "int2");
     TYPE_ALIASES.put("int2", "int2");
-    TYPE_ALIASES.put("int", "int4");
-    TYPE_ALIASES.put("integer", "int4");
     TYPE_ALIASES.put("int4", "int4");
+    TYPE_ALIASES.put("integer", "int4");
     TYPE_ALIASES.put("long", "int8");
     TYPE_ALIASES.put("int8", "int8");
-    TYPE_ALIASES.put("bigint", "int8");
-    TYPE_ALIASES.put("float", "float8");
     TYPE_ALIASES.put("real", "float4");
+    TYPE_ALIASES.put("float", "float4");
     TYPE_ALIASES.put("float4", "float4");
     TYPE_ALIASES.put("double", "float8");
     TYPE_ALIASES.put("double precision", "float8");
     TYPE_ALIASES.put("float8", "float8");
-    TYPE_ALIASES.put("decimal", "numeric");
     TYPE_ALIASES.put("numeric", "numeric");
     TYPE_ALIASES.put("character varying", "varchar");
     TYPE_ALIASES.put("varchar", "varchar");
+    TYPE_ALIASES.put("string", "varchar");
+    TYPE_ALIASES.put("ip", "varchar");
+    TYPE_ALIASES.put("object", "json");
     TYPE_ALIASES.put("time without time zone", "time");
     TYPE_ALIASES.put("time", "time");
     TYPE_ALIASES.put("time with time zone", "timetz");
@@ -202,7 +197,7 @@ public class TypeInfoCache implements TypeInfo {
         delim = ';';
       }
       arrayOidToDelimiter.put(oid, delim);
-      arrayOidToDelimiter.put(arrayOid, delim);
+      arrayOidToDelimiter.put(arrayOid, delim); // TODO: only this one in https://github.com/pgjdbc/pgjdbc/compare/master...crate:pgjdbc:REL42.2.5_crate
 
       String pgArrayTypeName = pgTypeName + "[]";
       pgNameToJavaClass.put(pgArrayTypeName, "java.sql.Array");
@@ -685,6 +680,10 @@ public class TypeInfoCache implements TypeInfo {
     try (ResourceLock ignore = lock.obtain()) {
       if (oid == Oid.UNSPECIFIED) {
         return Oid.UNSPECIFIED;
+      }
+
+      if (oid == Oid.JSON) {
+        return Oid.JSON;
       }
 
       Integer pgType = pgArrayToPgType.get(oid);

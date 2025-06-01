@@ -87,6 +87,7 @@ dependencies {
     shaded("com.ongres.scram:scram-client:3.1")
 
     implementation("org.checkerframework:checker-qual:3.42.0")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.1")
     testImplementation("se.jiderhamn:classloader-leak-test-framework:1.1.2")
     testFixturesImplementation("junit:junit:4.13.2")
     testFixturesImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")

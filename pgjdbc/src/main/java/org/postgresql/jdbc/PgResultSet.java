@@ -34,6 +34,7 @@ import org.postgresql.util.PGtokenizer;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.checkerframework.checker.index.qual.NonNegative;
 import org.checkerframework.checker.index.qual.Positive;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
@@ -95,6 +96,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 public class PgResultSet implements ResultSet, PGRefCursorResultSet {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   // needed for updateable result set support
   private boolean updateable;
@@ -261,6 +264,16 @@ public class PgResultSet implements ResultSet, PGRefCursorResultSet {
 
       default:
         String type = getPGType(columnIndex);
+
+        if (type.equals("json")) {
+          PGobject pgObject = getObject(columnIndex, PGobject.class);
+          try {
+            return OBJECT_MAPPER.readValue(pgObject.getValue(), HashMap.class);
+          } catch (IOException e) {
+            throw new PSQLException(GT.tr("Cannot convert PGobject to map: {0}", pgObject.getValue()),
+              PSQLState.INVALID_PARAMETER_VALUE);
+          }
+        }
 
         // if the backend doesn't know the type then coerce to String
         if ("unknown".equals(type)) {
@@ -3450,6 +3463,14 @@ public class PgResultSet implements ResultSet, PGRefCursorResultSet {
         throw new PSQLException(GT.tr("Bad value for type {0} : {1}", "double", s),
             PSQLState.NUMERIC_VALUE_OUT_OF_RANGE);
       }
+    }
+    return 0; // SQL NULL
+  }
+
+  public static Byte toByte(String s) throws SQLException {
+    if (s != null) {
+      s = s.trim();
+      return Byte.parseByte(s);
     }
     return 0; // SQL NULL
   }

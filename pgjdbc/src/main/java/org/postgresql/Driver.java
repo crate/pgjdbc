@@ -67,18 +67,6 @@ public class Driver implements java.sql.Driver {
   private static final Logger LOGGER = Logger.getLogger("org.postgresql.Driver");
   private static final SharedTimer SHARED_TIMER = new SharedTimer();
 
-  static {
-    try {
-      // moved the registerDriver from the constructor to here
-      // because some clients call the driver themselves (I know, as
-      // my early jdbc work did - and that was based on other examples).
-      // Placing it here, means that the driver is registered once only.
-      register();
-    } catch (SQLException e) {
-      throw new ExceptionInInitializerError(e);
-    }
-  }
-
   // Helper to retrieve default properties from classloader resource
   // properties files.
   private @Nullable Properties defaultProperties;

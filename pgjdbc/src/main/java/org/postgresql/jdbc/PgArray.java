@@ -20,8 +20,10 @@ import org.postgresql.util.GT;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.io.IOException;
 import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -160,6 +162,16 @@ public class PgArray implements Array {
 
     if (fieldString == null) {
       return null;
+    }
+
+    if (oid == Oid.JSON) {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        return mapper.readValue(fieldString, Object[].class);
+      } catch (IOException e) {
+        throw new PSQLException(GT.tr("The returned JSON cannot be converted to an array: {0}", index),
+                PSQLState.DATA_ERROR);
+      }
     }
 
     final PgArrayList arrayList = buildArrayList(fieldString);

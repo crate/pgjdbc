@@ -39,7 +39,7 @@ public class LazyCleaner {
   private static final Logger LOGGER = Logger.getLogger(LazyCleaner.class.getName());
   private static final LazyCleaner instance =
       new LazyCleaner(
-          Duration.ofMillis(Long.getLong("pgjdbc.config.cleanup.thread.ttl", 30000)),
+          Duration.ofMillis(Long.getLong("pgjdbc.config.cleanup.thread.ttl", 300000)),
           "PostgreSQL-JDBC-Cleaner"
       );
 
