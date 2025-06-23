@@ -29,18 +29,24 @@ import java.util.List;
  * @author Christopher Deckers (chrriis@gmail.com)
  */
 public class Parser {
+  private static char aMINUSSIGN = '-';
+
   /**
-   * Parses JDBC query into PostgreSQL's native format. Several queries might be given if separated
+   * Parses JDBC query into PostgreSQL's native format. Several queries might be
+   * given if separated
    * by semicolon.
    *
-   * @param query                     jdbc query to parse
-   * @param standardConformingStrings whether to allow backslashes to be used as escape characters
-   *                                  in single quote literals
-   * @param withParameters            whether to replace ?, ? with $1, $2, etc
-   * @param splitStatements           whether to split statements by semicolon
+   * @param query                      jdbc query to parse
+   * @param standardConformingStrings  whether to allow backslashes to be used as
+   *                                   escape characters
+   *                                   in single quote literals
+   * @param withParameters             whether to replace ?, ? with $1, $2, etc
+   * @param splitStatements            whether to split statements by semicolon
    * @param isBatchedReWriteConfigured whether re-write optimization is enabled
-   * @param quoteReturningIdentifiers whether to quote identifiers returned using returning clause
-   * @param returningColumnNames      for simple insert, update, delete add returning with given column names
+   * @param quoteReturningIdentifiers  whether to quote identifiers returned using
+   *                                   returning clause
+   * @param returningColumnNames       for simple insert, update, delete add
+   *                                   returning with given column names
    * @return list of native queries
    * @throws SQLException if unable to add returning clause (invalid column names)
    */
@@ -52,7 +58,7 @@ public class Parser {
     if (!withParameters && !splitStatements
         && returningColumnNames != null && returningColumnNames.length == 0) {
       return Collections.singletonList(new NativeQuery(query,
-        SqlCommand.createStatementTypeInfo(SqlCommandType.BLANK)));
+          SqlCommand.createStatementTypeInfo(SqlCommandType.BLANK)));
     }
 
     int fragmentStart = 0;
@@ -82,14 +88,16 @@ public class Parser {
     int keywordStart = -1;
     int keywordEnd = -1;
     /*
-    loop through looking for keywords, single quotes, double quotes, comments, dollar quotes,
-    parenthesis, ? and ;
-    for single/double/dollar quotes, and comments we just want to move the index
+     * loop through looking for keywords, single quotes, double quotes, comments,
+     * dollar quotes,
+     * parenthesis, ? and ;
+     * for single/double/dollar quotes, and comments we just want to move the index
      */
     for (int i = 0; i < aChars.length; i++) {
       char aChar = aChars[i];
       boolean isKeyWordChar = false;
-      // ';' is ignored as it splits the queries. We do have to deal with ; in BEGIN ATOMIC functions
+      // ';' is ignored as it splits the queries. We do have to deal with ; in BEGIN
+      // ATOMIC functions
       whitespaceOnly &= aChar == ';' || Character.isWhitespace(aChar);
       keywordEnd = i; // parseSingleQuotes, parseDoubleQuotes, etc move index so we keep old value
       switch (aChar) {
@@ -154,7 +162,8 @@ public class Parser {
             }
             fragmentStart = i + 1;
             if (nativeSql.length() > 0) {
-              if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent, quoteReturningIdentifiers)) {
+              if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent,
+                  quoteReturningIdentifiers)) {
                 isReturningPresent = true;
               }
 
@@ -165,7 +174,7 @@ public class Parser {
 
                 if (!isValuesFound || !isCurrentReWriteCompatible || valuesParenthesisClosePosition == -1
                     || (bindPositions != null
-                    && valuesParenthesisClosePosition < bindPositions.get(bindPositions.size() - 1))) {
+                        && valuesParenthesisClosePosition < bindPositions.get(bindPositions.size() - 1))) {
                   valuesParenthesisOpenPosition = -1;
                   valuesParenthesisClosePosition = -1;
                 }
@@ -254,7 +263,7 @@ public class Parser {
           }
         } else if (currentCommandType == SqlCommandType.CREATE) {
           /*
-          We are looking for BEGIN ATOMIC
+           * We are looking for BEGIN ATOMIC
            */
           if (wordLength == 5 && parseBeginKeyword(aChars, keywordStart)) {
             isBeginPresent = true;
@@ -289,7 +298,7 @@ public class Parser {
 
     if (!isValuesFound || !isCurrentReWriteCompatible || valuesParenthesisClosePosition == -1
         || (bindPositions != null
-        && valuesParenthesisClosePosition < bindPositions.get(bindPositions.size() - 1))) {
+            && valuesParenthesisClosePosition < bindPositions.get(bindPositions.size() - 1))) {
       valuesParenthesisOpenPosition = -1;
       valuesParenthesisClosePosition = -1;
     }
@@ -310,7 +319,8 @@ public class Parser {
       return nativeQueries != null ? nativeQueries : Collections.emptyList();
     }
 
-    if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent, quoteReturningIdentifiers)) {
+    if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent,
+        quoteReturningIdentifiers)) {
       isReturningPresent = true;
     }
 
@@ -365,14 +375,15 @@ public class Parser {
     }
     if (nextInd + 2 >= aChars.length
         || (!parseAsKeyword(aChars, nextInd)
-        || isIdentifierContChar(aChars[nextInd + 2]))) {
+            || isIdentifierContChar(aChars[nextInd + 2]))) {
       return command;
     }
     return null;
   }
 
   private static boolean addReturning(StringBuilder nativeSql, SqlCommandType currentCommandType,
-      String[] returningColumnNames, boolean isReturningPresent, boolean quoteReturningIdentifiers) throws SQLException {
+      String[] returningColumnNames, boolean isReturningPresent, boolean quoteReturningIdentifiers)
+      throws SQLException {
     if (isReturningPresent || returningColumnNames.length == 0) {
       return false;
     }
@@ -394,7 +405,7 @@ public class Parser {
         nativeSql.append(", ");
       }
       /*
-      If the client quotes identifiers then doing so again would create an error
+       * If the client quotes identifiers then doing so again would create an error
        */
       if (quoteReturningIdentifiers) {
         Utils.escapeIdentifier(nativeSql, columnName);
@@ -406,7 +417,8 @@ public class Parser {
   }
 
   /**
-   * Converts {@link IntList} to {@code int[]}. A {@code null} collection is converted to
+   * Converts {@link IntList} to {@code int[]}. A {@code null} collection is
+   * converted to
    * {@code null} array.
    *
    * @param list input list
@@ -420,11 +432,17 @@ public class Parser {
   }
 
   /**
-   * <p>Find the end of the single-quoted string starting at the given offset.</p>
+   * <p>
+   * Find the end of the single-quoted string starting at the given offset.
+   * </p>
    *
-   * <p>Note: for {@code 'single '' quote in string'}, this method currently returns the offset of
-   * first {@code '} character after the initial one. The caller must call the method a second time
-   * for the second part of the quoted string.</p>
+   * <p>
+   * Note: for {@code 'single '' quote in string'}, this method currently returns
+   * the offset of
+   * first {@code '} character after the initial one. The caller must call the
+   * method a second time
+   * for the second part of the quoted string.
+   * </p>
    *
    * @param query                     query
    * @param offset                    start offset
@@ -467,11 +485,16 @@ public class Parser {
   }
 
   /**
-   * <p>Find the end of the double-quoted string starting at the given offset.</p>
+   * <p>
+   * Find the end of the double-quoted string starting at the given offset.
+   * </p>
    *
-   * <p>Note: for {@code "double "" quote in string"}, this method currently
-   * returns the offset of first {@code &quot;} character after the initial one. The caller must
-   * call the method a second time for the second part of the quoted string.</p>
+   * <p>
+   * Note: for {@code "double "" quote in string"}, this method currently
+   * returns the offset of first {@code &quot;} character after the initial one.
+   * The caller must
+   * call the method a second time for the second part of the quoted string.
+   * </p>
    *
    * @param query  query
    * @param offset start offset
@@ -485,7 +508,8 @@ public class Parser {
   }
 
   /**
-   * Test if the dollar character ({@code $}) at the given offset starts a dollar-quoted string and
+   * Test if the dollar character ({@code $}) at the given offset starts a
+   * dollar-quoted string and
    * return the offset of the ending dollar character.
    *
    * @param query  query
@@ -526,7 +550,8 @@ public class Parser {
   }
 
   /**
-   * Test if the {@code -} character at {@code offset} starts a {@code --} style line comment,
+   * Test if the {@code -} character at {@code offset} starts a {@code --} style
+   * line comment,
    * and return the position of the first {@code \r} or {@code \n} character.
    *
    * @param query  query
@@ -546,7 +571,8 @@ public class Parser {
   }
 
   /**
-   * Test if the {@code /} character at {@code offset} starts a block comment, and return the
+   * Test if the {@code /} character at {@code offset} starts a block comment, and
+   * return the
    * position of the last {@code /} character.
    *
    * @param query  query
@@ -585,10 +611,11 @@ public class Parser {
   }
 
   /**
-   * Parse string to check presence of DELETE keyword regardless of case. The initial character is
+   * Parse string to check presence of DELETE keyword regardless of case. The
+   * initial character is
    * assumed to have been matched.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -608,7 +635,7 @@ public class Parser {
   /**
    * Parse string to check presence of INSERT keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -626,9 +653,9 @@ public class Parser {
   }
 
   /**
-   Parse string to check presence of BEGIN keyword regardless of case.
+   * Parse string to check presence of BEGIN keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -645,9 +672,9 @@ public class Parser {
   }
 
   /**
-   Parse string to check presence of ATOMIC keyword regardless of case.
+   * Parse string to check presence of ATOMIC keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -666,7 +693,7 @@ public class Parser {
   /**
    * Parse string to check presence of MOVE keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -684,7 +711,7 @@ public class Parser {
   /**
    * Parse string to check presence of RETURNING keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -707,7 +734,7 @@ public class Parser {
   /**
    * Parse string to check presence of SELECT keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -727,7 +754,7 @@ public class Parser {
   /**
    * Parse string to check presence of CREATE keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -746,7 +773,7 @@ public class Parser {
   /**
    * Parse string to check presence of CREATE keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -766,7 +793,7 @@ public class Parser {
   /**
    * Parse string to check presence of UPDATE keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -786,7 +813,7 @@ public class Parser {
   /**
    * Parse string to check presence of VALUES keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -804,11 +831,12 @@ public class Parser {
   }
 
   /**
-   * Faster version of {@link Long#parseLong(String)} when parsing a substring is required
+   * Faster version of {@link Long#parseLong(String)} when parsing a substring is
+   * required
    *
-   * @param s string to parse
+   * @param s          string to parse
    * @param beginIndex begin index
-   * @param endIndex end index
+   * @param endIndex   end index
    * @return long value
    */
   public static long parseLong(String s, int beginIndex, int endIndex) {
@@ -824,9 +852,46 @@ public class Parser {
   }
 
   /**
+   * Faster version of {@link Long#parseLong(String)} when parsing a substring is
+   * required which supports signed longs.
+   *
+   * @param s          string to parse
+   * @param beginIndex begin index
+   * @param endIndex   end index
+   * @return long value
+   */
+  static long parseSignedLong(String s, int beginIndex, int endIndex) {
+    boolean isNegative = s.charAt(beginIndex) == aMINUSSIGN;
+    if (isNegative) {
+      beginIndex++;
+    }
+    long res = parseLong(s, beginIndex, endIndex);
+    if (isNegative) {
+      return res * -1;
+    }
+    return res;
+  }
+
+  /**
+   * Returns true if a given string {@code s} has digit or '-' character at
+   * position {@code pos}.
+   *
+   * @param s   input string
+   * @param pos position (0-based)
+   * @return true if input string s has digit at position pos
+   */
+  static boolean isDigitOrMinusAt(String s, int pos) {
+    if (pos <= 0 || pos > s.length()) {
+      return false;
+    }
+    char c = s.charAt(pos);
+    return Character.isDigit(c) || c == aMINUSSIGN;
+  }
+
+  /**
    * Parse string to check presence of WITH keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -844,7 +909,7 @@ public class Parser {
   /**
    * Parse string to check presence of AS keyword regardless of case.
    *
-   * @param query char[] of the query statement
+   * @param query  char[] of the query statement
    * @param offset position of query to start checking
    * @return boolean indicates presence of word
    */
@@ -859,7 +924,8 @@ public class Parser {
 
   /**
    * Returns true if a given string {@code s} has digit at position {@code pos}.
-   * @param s input string
+   *
+   * @param s   input string
    * @param pos position (0-based)
    * @return true if input string s has digit at position pos
    */
@@ -868,8 +934,10 @@ public class Parser {
   }
 
   /**
-   * Converts digit at position {@code pos} in string {@code s} to integer or throws.
-   * @param s input string
+   * Converts digit at position {@code pos} in string {@code s} to integer or
+   * throws.
+   *
+   * @param s   input string
    * @param pos position (0-based)
    * @return integer value of a digit at position pos
    * @throws NumberFormatException if character at position pos is not an integer
@@ -890,7 +958,8 @@ public class Parser {
    * </p>
    *
    * @param c character
-   * @return true if the character is a whitespace character as defined in the backend's parser
+   * @return true if the character is a whitespace character as defined in the
+   *         backend's parser
    */
   public static boolean isSpace(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
@@ -915,8 +984,9 @@ public class Parser {
 
   /**
    * @param c character
-   * @return true if the given character is a valid character for an operator in the backend's
-   *     parser
+   * @return true if the given character is a valid character for an operator in
+   *         the backend's
+   *         parser
    */
   public static boolean isOperatorChar(char c) {
     /*
@@ -933,24 +1003,29 @@ public class Parser {
    *
    * @param c the character to check
    * @return true if valid as first character of an identifier; false if not
-   * @see <a href="https://www.postgresql.org/docs/9.6/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS">Identifiers and Key Words</a>
+   * @see <a href=
+   *      "https://www.postgresql.org/docs/9.6/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS">Identifiers
+   *      and Key Words</a>
    */
   public static boolean isIdentifierStartChar(char c) {
     /*
      * PostgreSQL's implementation is located in
      * pgsql/src/backend/parser/scan.l:
-     * ident_start    [A-Za-z\200-\377_]
-     * ident_cont     [A-Za-z\200-\377_0-9\$]
-     * however it is not clear how that interacts with unicode, so we just use Java's implementation.
+     * ident_start [A-Za-z\200-\377_]
+     * ident_cont [A-Za-z\200-\377_0-9\$]
+     * however it is not clear how that interacts with unicode, so we just use
+     * Java's implementation.
      */
     return Character.isJavaIdentifierStart(c);
   }
 
   /**
-   * Checks if a character is valid as the second or later character of an identifier.
+   * Checks if a character is valid as the second or later character of an
+   * identifier.
    *
    * @param c the character to check
-   * @return true if valid as second or later character of an identifier; false if not
+   * @return true if valid as second or later character of an identifier; false if
+   *         not
    */
   public static boolean isIdentifierContChar(char c) {
     return Character.isJavaIdentifierPart(c);
@@ -968,7 +1043,8 @@ public class Parser {
    * Checks if a character is valid as the start of a dollar quoting tag.
    *
    * @param c the character to check
-   * @return true if valid as first character of a dollar quoting tag; false if not
+   * @return true if valid as first character of a dollar quoting tag; false if
+   *         not
    */
   public static boolean isDollarQuoteStartChar(char c) {
     /*
@@ -985,17 +1061,20 @@ public class Parser {
   }
 
   /**
-   * Checks if a character is valid as the second or later character of a dollar quoting tag.
+   * Checks if a character is valid as the second or later character of a dollar
+   * quoting tag.
    *
    * @param c the character to check
-   * @return true if valid as second or later character of a dollar quoting tag; false if not
+   * @return true if valid as second or later character of a dollar quoting tag;
+   *         false if not
    */
   public static boolean isDollarQuoteContChar(char c) {
     return c != '$' && isIdentifierContChar(c);
   }
 
   /**
-   * Compares two sub-arrays of the given character array for equalness. If the length is zero, the
+   * Compares two sub-arrays of the given character array for equalness. If the
+   * length is zero, the
    * result is true if and only if the offsets are within the bounds of the array.
    *
    * @param arr  a char array
@@ -1023,23 +1102,31 @@ public class Parser {
   }
 
   /**
-   * Converts JDBC-specific callable statement escapes {@code { [? =] call <some_function> [(?,
-   * [?,..])] }} into the PostgreSQL format which is {@code select <some_function> (?, [?, ...]) as
-   * result} or {@code select * from <some_function> (?, [?, ...]) as result} (7.3)
+   * Converts JDBC-specific callable statement escapes
+   * {@code { [? =] call <some_function> [(?,
+   * [?,..])] }} into the PostgreSQL format which is
+   * {@code select <some_function> (?, [?, ...]) as
+   * result} or {@code select * from <some_function> (?, [?, ...]) as result}
+   * (7.3)
    *
    * @param jdbcSql              sql text with JDBC escapes
-   * @param stdStrings           if backslash in single quotes should be regular character or escape one
+   * @param stdStrings           if backslash in single quotes should be regular
+   *                             character or escape one
    * @param serverVersion        server version
    * @param protocolVersion      protocol version
-   * @param escapeSyntaxCallMode mode specifying whether JDBC escape call syntax is transformed into a CALL/SELECT statement
+   * @param escapeSyntaxCallMode mode specifying whether JDBC escape call syntax
+   *                             is transformed into a CALL/SELECT statement
    * @return SQL in appropriate for given server format
    * @throws SQLException if given SQL is malformed
    */
   public static JdbcCallParseInfo modifyJdbcCall(String jdbcSql, boolean stdStrings,
       int serverVersion, int protocolVersion, EscapeSyntaxCallMode escapeSyntaxCallMode) throws SQLException {
     // Mini-parser for JDBC function-call syntax (only)
-    // TODO: Merge with escape processing (and parameter parsing?) so we only parse each query once.
-    // RE: frequently used statements are cached (see {@link org.postgresql.jdbc.PgConnection#borrowQuery}), so this "merge" is not that important.
+    // TODO: Merge with escape processing (and parameter parsing?) so we only parse
+    // each query once.
+    // RE: frequently used statements are cached (see {@link
+    // org.postgresql.jdbc.PgConnection#borrowQuery}), so this "merge" is not that
+    // important.
     String sql = jdbcSql;
     boolean isFunction = false;
     boolean outParamBeforeFunc = false;
@@ -1057,7 +1144,7 @@ public class Parser {
       char ch = jdbcSql.charAt(i);
 
       switch (state) {
-        case 1:  // Looking for { at start of query
+        case 1: // Looking for { at start of query
           if (ch == '{') {
             ++i;
             ++state;
@@ -1069,13 +1156,12 @@ public class Parser {
           }
           break;
 
-        case 2:  // After {, looking for ? or =, skipping whitespace
+        case 2: // After {, looking for ? or =, skipping whitespace
           if (ch == '?') {
-            outParamBeforeFunc =
-                isFunction = true;   // { ? = call ... }  -- function with one out parameter
+            outParamBeforeFunc = isFunction = true; // { ? = call ... } -- function with one out parameter
             ++i;
             ++state;
-          } else if (ch == 'c' || ch == 'C') {  // { call ... }      -- proc with no out parameters
+          } else if (ch == 'c' || ch == 'C') { // { call ... } -- proc with no out parameters
             state += 3; // Don't increase 'i'
           } else if (Character.isWhitespace(ch)) {
             ++i;
@@ -1085,7 +1171,7 @@ public class Parser {
           }
           break;
 
-        case 3:  // Looking for = after ?, skipping whitespace
+        case 3: // Looking for = after ?, skipping whitespace
           if (ch == '=') {
             ++i;
             ++state;
@@ -1096,7 +1182,7 @@ public class Parser {
           }
           break;
 
-        case 4:  // Looking for 'call' after '? =' skipping whitespace
+        case 4: // Looking for 'call' after '? =' skipping whitespace
           if (ch == 'c' || ch == 'C') {
             ++state; // Don't increase 'i'.
           } else if (Character.isWhitespace(ch)) {
@@ -1106,7 +1192,7 @@ public class Parser {
           }
           break;
 
-        case 5:  // Should be at 'call ' either at start of string or after ?=
+        case 5: // Should be at 'call ' either at start of string or after ?=
           if ((ch == 'c' || ch == 'C') && i + 4 <= len && "call"
               .equalsIgnoreCase(jdbcSql.substring(i, i + 4))) {
             isFunction = true;
@@ -1119,7 +1205,7 @@ public class Parser {
           }
           break;
 
-        case 6:  // Looking for whitespace char after 'call'
+        case 6: // Looking for whitespace char after 'call'
           if (Character.isWhitespace(ch)) {
             // Ok, we found the start of the real call.
             ++i;
@@ -1130,7 +1216,7 @@ public class Parser {
           }
           break;
 
-        case 7:  // In "body" of the query (after "{ [? =] call ")
+        case 7: // In "body" of the query (after "{ [? =] call ")
           if (ch == '\'') {
             inQuotes = !inQuotes;
             ++i;
@@ -1157,7 +1243,7 @@ public class Parser {
           }
           break;
 
-        case 8:  // At trailing end of query, eating whitespace
+        case 8: // At trailing end of query, eating whitespace
           if (Character.isWhitespace(ch)) {
             ++i;
           } else {
@@ -1176,16 +1262,17 @@ public class Parser {
         // Not an escaped syntax.
 
         // Detect PostgreSQL native CALL.
-        // (OUT parameter registration, needed for stored procedures with INOUT arguments, will fail without this)
+        // (OUT parameter registration, needed for stored procedures with INOUT
+        // arguments, will fail without this)
         i = 0;
         while (i < len && Character.isWhitespace(jdbcSql.charAt(i))) {
           i++; // skip any preceding whitespace
         }
         if (i < len - 5) { // 5 == length of "call" + 1 whitespace
-          //Check for CALL followed by whitespace
+          // Check for CALL followed by whitespace
           char ch = jdbcSql.charAt(i);
           if ((ch == 'c' || ch == 'C') && "call".equalsIgnoreCase(jdbcSql.substring(i, i + 4))
-               && Character.isWhitespace(jdbcSql.charAt(i + 4))) {
+              && Character.isWhitespace(jdbcSql.charAt(i + 4))) {
             isFunction = true;
           }
         }
@@ -1221,7 +1308,8 @@ public class Parser {
 
     int opening = s.indexOf('(') + 1;
     if (opening == 0) {
-      // here the function call has no parameters declaration eg : "{ ? = call pack_getValue}"
+      // here the function call has no parameters declaration eg : "{ ? = call
+      // pack_getValue}"
       sb.append(outParamBeforeFunc ? "(?)" : "()");
     } else if (outParamBeforeFunc) {
       // move the single out parameter into the function call
@@ -1259,13 +1347,21 @@ public class Parser {
   }
 
   /**
-   * <p>Filter the SQL string of Java SQL Escape clauses.</p>
+   * <p>
+   * Filter the SQL string of Java SQL Escape clauses.
+   * </p>
    *
-   * <p>Currently implemented Escape clauses are those mentioned in 11.3 in the specification.
-   * Basically we look through the sql string for {d xxx}, {t xxx}, {ts xxx}, {oj xxx} or {fn xxx}
-   * in non-string sql code. When we find them, we just strip the escape part leaving only the xxx
-   * part. So, something like "select * from x where d={d '2001-10-09'}" would return "select * from
-   * x where d= '2001-10-09'".</p>
+   * <p>
+   * Currently implemented Escape clauses are those mentioned in 11.3 in the
+   * specification.
+   * Basically we look through the sql string for {d xxx}, {t xxx}, {ts xxx}, {oj
+   * xxx} or {fn xxx}
+   * in non-string sql code. When we find them, we just strip the escape part
+   * leaving only the xxx
+   * part. So, something like "select * from x where d={d '2001-10-09'}" would
+   * return "select * from
+   * x where d= '2001-10-09'".
+   * </p>
    *
    * @param sql                       the original query text
    * @param replaceProcessingEnabled  whether replace_processing_enabled is on
@@ -1301,15 +1397,17 @@ public class Parser {
   }
 
   /**
-   * parse the given sql from index i, appending it to the given buffer until we hit an unmatched
-   * right parentheses or end of string. When the stopOnComma flag is set we also stop processing
+   * parse the given sql from index i, appending it to the given buffer until we
+   * hit an unmatched
+   * right parentheses or end of string. When the stopOnComma flag is set we also
+   * stop processing
    * when a comma is found in sql text that isn't inside nested parenthesis.
    *
-   * @param sql the original query text
-   * @param i starting position for replacing
-   * @param newsql where to write the replaced output
+   * @param sql         the original query text
+   * @param i           starting position for replacing
+   * @param newsql      where to write the replaced output
    * @param stopOnComma should we stop after hitting the first comma in sql text?
-   * @param stdStrings whether standard_conforming_strings is on
+   * @param stdStrings  whether standard_conforming_strings is on
    * @return the position we stopped processing at
    * @throws SQLException if given SQL is wrong
    */
@@ -1325,8 +1423,7 @@ public class Parser {
     while (!endOfNested && ++i < len) {
       char c = sql[i];
 
-      state_switch:
-      switch (state) {
+      state_switch: switch (state) {
         case IN_SQLCODE:
           if (c == '$') {
             int i0 = i;
@@ -1456,11 +1553,12 @@ public class Parser {
   /**
    * Generate sql for escaped functions.
    *
-   * @param newsql destination StringBuilder
+   * @param newsql       destination StringBuilder
    * @param functionName the escaped function name
-   * @param sql input SQL text (containing arguments of a function call with possible JDBC escapes)
-   * @param i position in the input SQL
-   * @param stdStrings whether standard_conforming_strings is on
+   * @param sql          input SQL text (containing arguments of a function call
+   *                     with possible JDBC escapes)
+   * @param i            position in the input SQL
+   * @param stdStrings   whether standard_conforming_strings is on
    * @return the right PostgreSQL sql
    * @throws SQLException if something goes wrong
    */
@@ -1504,9 +1602,9 @@ public class Parser {
     return i;
   }
 
-  private static final char[] QUOTE_OR_ALPHABETIC_MARKER = {'\"', '0'};
-  private static final char[] QUOTE_OR_ALPHABETIC_MARKER_OR_PARENTHESIS = {'\"', '0', '('};
-  private static final char[] SINGLE_QUOTE = {'\''};
+  private static final char[] QUOTE_OR_ALPHABETIC_MARKER = { '\"', '0' };
+  private static final char[] QUOTE_OR_ALPHABETIC_MARKER_OR_PARENTHESIS = { '\"', '0', '(' };
+  private static final char[] SINGLE_QUOTE = { '\'' };
 
   // Static variables for parsing SQL when replaceProcessing is true.
   private enum SqlParseState {

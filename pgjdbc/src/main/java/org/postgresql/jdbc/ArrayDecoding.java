@@ -378,6 +378,7 @@ final class ArrayDecoding {
     OID_TO_DECODER.put(Oid.VARCHAR, STRING_ARRAY);
     // 42.2.x decodes jsonb array as String rather than PGobject
     OID_TO_DECODER.put(Oid.JSONB, STRING_ONLY_DECODER);
+    OID_TO_DECODER.put(Oid.JSON_ARRAY, STRING_ONLY_DECODER);
     OID_TO_DECODER.put(Oid.BIT, BOOLEAN_OBJ_ARRAY);
     OID_TO_DECODER.put(Oid.BOOL, BOOLEAN_OBJ_ARRAY);
     OID_TO_DECODER.put(Oid.BYTEA, BYTE_ARRAY_ARRAY);

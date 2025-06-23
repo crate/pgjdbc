@@ -14,20 +14,25 @@ import org.postgresql.core.Field;
 import org.postgresql.core.Oid;
 import org.postgresql.core.Tuple;
 import org.postgresql.jdbc.ArrayDecoding.PgArrayList;
+import org.postgresql.jdbc2.ArrayAssistant;
 import org.postgresql.jdbc2.ArrayAssistantRegistry;
 import org.postgresql.util.ByteConverter;
 import org.postgresql.util.GT;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.sql.Array;
+import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 
 /**
  * <p>Array is used collect one column of query result data.</p>
@@ -41,7 +46,7 @@ import java.util.Map;
  *
  * @see ResultSet#getArray
  */
-public class PgArray implements Array {
+public class PgArray implements java.sql.Array {
 
   static {
     ArrayAssistantRegistry.register(Oid.UUID, new UUIDArrayAssistant());
@@ -64,6 +69,14 @@ public class PgArray implements Array {
   protected @Nullable String fieldString;
 
   /**
+   * Whether Object[] should be used instead primitive arrays. Object[] can contain null elements.
+   * It should be set to <Code>true</Code> if
+   * {@link BaseConnection#haveMinimumCompatibleVersion(String)} returns <Code>true</Code> for
+   * argument "8.3".
+   */
+  private final boolean useObjects;
+
+  /**
    * Value of field as {@link PgArrayList}. Will be initialized only once within
    * {@link #buildArrayList(String)}.
    */
@@ -76,6 +89,7 @@ public class PgArray implements Array {
   private PgArray(BaseConnection connection, int oid) throws SQLException {
     this.connection = connection;
     this.oid = oid;
+    this.useObjects = true; // useObjects is always true for PgArray
   }
 
   /**
@@ -162,7 +176,18 @@ public class PgArray implements Array {
       return null;
     }
 
+    if (oid == Oid.JSON) {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        return mapper.readValue(fieldString, Object[].class);
+      } catch (IOException e) {
+        throw new PSQLException(GT.tr("The returned JSON cannot be converted to an array: {0}", index),
+                PSQLState.DATA_ERROR);
+      }
+    }
+
     final PgArrayList arrayList = buildArrayList(fieldString);
+    // buildArrayList();
 
     if (count == 0) {
       count = arrayList.size();
@@ -301,6 +326,130 @@ public class PgArray implements Array {
    * {@link #arrayList} is build. Method can be called many times in order to make sure that array
    * list is ready to use, however {@link #arrayList} will be set only once during first call.
    */
+  private synchronized void buildArrayList() throws SQLException {
+    if (arrayList != null) {
+      return;
+    }
+
+    arrayList = new PgArrayList();
+
+    char delim = connection.getTypeInfo().getArrayDelimiter(oid);
+
+    if (fieldString != null) {
+
+      char[] chars = fieldString.toCharArray();
+      StringBuilder buffer = null;
+      boolean insideString = false;
+      boolean wasInsideString = false; // needed for checking if NULL
+      // value occurred
+      List<PgArrayList> dims = new ArrayList<PgArrayList>(); // array dimension arrays
+      PgArrayList curArray = arrayList; // currently processed array
+
+      // Starting with 8.0 non-standard (beginning index
+      // isn't 1) bounds the dimensions are returned in the
+      // data formatted like so "[0:3]={0,1,2,3,4}".
+      // Older versions simply do not return the bounds.
+      //
+      // Right now we ignore these bounds, but we could
+      // consider allowing these index values to be used
+      // even though the JDBC spec says 1 is the first
+      // index. I'm not sure what a client would like
+      // to see, so we just retain the old behavior.
+      int startOffset = 0;
+      {
+        if (chars[0] == '[') {
+          while (chars[startOffset] != '=') {
+            startOffset++;
+          }
+          startOffset++; // skip =
+        }
+      }
+
+      for (int i = startOffset; i < chars.length; i++) {
+
+        // escape character that we need to skip
+        if (chars[i] == '\\') {
+          i++;
+        } else if (!insideString && chars[i] == '{') {
+          // subarray start
+          if (dims.isEmpty()) {
+            dims.add(arrayList);
+          } else {
+            PgArrayList a = new PgArrayList();
+            PgArrayList p = dims.get(dims.size() - 1);
+            p.add(a);
+            dims.add(a);
+          }
+          curArray = dims.get(dims.size() - 1);
+
+          // number of dimensions
+          {
+            for (int t = i + 1; t < chars.length; t++) {
+              if (Character.isWhitespace(chars[t])) {
+                continue;
+              } else if (chars[t] == '{') {
+                curArray.dimensionsCount++;
+              } else {
+                break;
+              }
+            }
+          }
+
+          buffer = new StringBuilder();
+          continue;
+        } else if (chars[i] == '"') {
+          // quoted element
+          insideString = !insideString;
+          wasInsideString = true;
+          continue;
+        } else if (!insideString && Character.isWhitespace(chars[i])) {
+          // white space
+          continue;
+        } else if ((!insideString && (chars[i] == delim || chars[i] == '}'))
+            || i == chars.length - 1) {
+          // array end or element end
+          // when character that is a part of array element
+          if (chars[i] != '"' && chars[i] != '}' && chars[i] != delim && buffer != null) {
+            buffer.append(chars[i]);
+          }
+
+          String b = buffer == null ? null : buffer.toString();
+
+          // add element to current array
+          if (b != null && (!b.isEmpty() || wasInsideString)) {
+            curArray.add(!wasInsideString && b.equals("NULL") ? null : b);
+          }
+
+          wasInsideString = false;
+          buffer = new StringBuilder();
+
+          // when end of an array
+          if (chars[i] == '}') {
+            dims.remove(dims.size() - 1);
+
+            // when multi-dimension
+            if (!dims.isEmpty()) {
+              curArray = dims.get(dims.size() - 1);
+            }
+
+            buffer = null;
+          }
+
+          continue;
+        }
+
+        if (buffer != null) {
+          buffer.append(chars[i]);
+        }
+      }
+    }
+  }
+
+  /**
+   * Build {@link ArrayList} from field's string input. As a result of this method
+   * {@link #arrayList} is build. Method can be called many times in order to make sure that array
+   * list is ready to use, however {@link #arrayList} will be set only once during first call.
+   */
   private PgArrayList buildArrayList(String fieldString) throws SQLException {
     try (ResourceLock ignore = lock.obtain()) {
       if (arrayList == null) {
@@ -319,6 +468,285 @@ public class PgArray implements Array {
     final BaseConnection connection = getConnection();
     return ArrayDecoding.readStringArray(index, count, connection.getTypeInfo().getPGArrayElement(oid), input, connection);
   }
+  // private Object buildArray(PgArrayList input, int index, int count) throws SQLException {
+
+  //   if (count < 0) {
+  //     count = input.size();
+  //   }
+
+  //   // array to be returned
+  //   Object ret = null;
+
+  //   // how many dimensions
+  //   int dims = input.dimensionsCount;
+
+  //   // dimensions length array (to be used with java.lang.reflect.Array.newInstance(Class<?>,
+  //   // int[]))
+  //   int[] dimsLength = dims > 1 ? new int[dims] : null;
+  //   if (dims > 1) {
+  //     for (int i = 0; i < dims; i++) {
+  //       dimsLength[i] = (i == 0 ? count : 0);
+  //     }
+  //   }
+
+  //   // array elements counter
+  //   int length = 0;
+
+  //   // array elements type
+  //   final int type =
+  //       connection.getTypeInfo().getSQLType(connection.getTypeInfo().getPGArrayElement(oid));
+
+  //   if (type == Types.BIT || type == Types.BOOLEAN) {
+  //     boolean[] pa = null; // primitive array
+  //     Object[] oa = null; // objects array
+
+  //     if (dims > 1 || useObjects) {
+  //       ret = oa = (dims > 1
+  //           ? (Object[]) java.lang.reflect.Array
+  //               .newInstance(useObjects ? Boolean.class : boolean.class, dimsLength)
+  //           : new Boolean[count]);
+  //     } else {
+  //       ret = pa = new boolean[count];
+  //     }
+
+  //     // add elements
+  //     for (; count > 0; count--) {
+  //       Object o = input.get(index++);
+
+  //       if (dims > 1 || useObjects) {
+  //         oa[length++] = o == null ? null
+  //           : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : BooleanTypeUtil.castToBoolean((String) o));
+  //       } else {
+  //         pa[length++] = o == null ? false : BooleanTypeUtil.castToBoolean((String) o);
+  //       }
+  //     }
+  //   } else if (type == Types.SMALLINT) {
+  //     short[] pa = null;
+  //     Object[] oa = null;
+
+  //     if (dims > 1 || useObjects) {
+  //       ret =
+  //           oa = (dims > 1
+  //               ? (Object[]) java.lang.reflect.Array
+  //                   .newInstance(useObjects ? Short.class : short.class, dimsLength)
+  //               : new Short[count]);
+  //     } else {
+  //       ret = pa = new short[count];
+  //     }
+
+  //     for (; count > 0; count--) {
+  //       Object o = input.get(index++);
+
+  //       if (dims > 1 || useObjects) {
+  //         oa[length++] = o == null ? null
+  //             : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : PgResultSet.toShort((String) o));
+  //       } else {
+  //         pa[length++] = o == null ? 0 : PgResultSet.toShort((String) o);
+  //       }
+  //     }
+  //   } else if (type == Types.INTEGER) {
+  //     int[] pa = null;
+  //     Object[] oa = null;
+
+  //     if (dims > 1 || useObjects) {
+  //       ret =
+  //           oa = (dims > 1
+  //               ? (Object[]) java.lang.reflect.Array
+  //                   .newInstance(useObjects ? Integer.class : int.class, dimsLength)
+  //               : new Integer[count]);
+  //     } else {
+  //       ret = pa = new int[count];
+  //     }
+
+  //     for (; count > 0; count--) {
+  //       Object o = input.get(index++);
+
+  //       if (dims > 1 || useObjects) {
+  //         oa[length++] = o == null ? null
+  //             : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : PgResultSet.toInt((String) o));
+  //       } else {
+  //         pa[length++] = o == null ? 0 : PgResultSet.toInt((String) o);
+  //       }
+  //     }
+  //   } else if (type == Types.BIGINT) {
+  //     long[] pa = null;
+  //     Object[] oa = null;
+
+  //     if (dims > 1 || useObjects) {
+  //       ret =
+  //           oa = (dims > 1
+  //               ? (Object[]) java.lang.reflect.Array
+  //                   .newInstance(useObjects ? Long.class : long.class, dimsLength)
+  //               : new Long[count]);
+  //     } else {
+  //       ret = pa = new long[count];
+  //     }
+
+  //     for (; count > 0; count--) {
+  //       Object o = input.get(index++);
+
+  //       if (dims > 1 || useObjects) {
+  //         oa[length++] = o == null ? null
+  //             : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : PgResultSet.toLong((String) o));
+  //       } else {
+  //         pa[length++] = o == null ? 0L : PgResultSet.toLong((String) o);
+  //       }
+  //     }
+  //   } else if (type == Types.NUMERIC) {
+  //     Object[] oa = null;
+  //     ret = oa =
+  //         (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(BigDecimal.class, dimsLength)
+  //             : new BigDecimal[count]);
+
+  //     for (; count > 0; count--) {
+  //       Object v = input.get(index++);
+  //       oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1)
+  //           : (v == null ? null : PgResultSet.toBigDecimal((String) v));
+  //     }
+  //   } else if (type == Types.REAL) {
+  //     float[] pa = null;
+  //     Object[] oa = null;
+
+  //     if (dims > 1 || useObjects) {
+  //       ret =
+  //           oa = (dims > 1
+  //               ? (Object[]) java.lang.reflect.Array
+  //                   .newInstance(useObjects ? Float.class : float.class, dimsLength)
+  //               : new Float[count]);
+  //     } else {
+  //       ret = pa = new float[count];
+  //     }
+
+  //     for (; count > 0; count--) {
+  //       Object o = input.get(index++);
+
+  //       if (dims > 1 || useObjects) {
+  //         oa[length++] = o == null ? null
+  //             : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : PgResultSet.toFloat((String) o));
+  //       } else {
+  //         pa[length++] = o == null ? 0f : PgResultSet.toFloat((String) o);
+  //       }
+  //     }
+  //   } else if (type == Types.DOUBLE) {
+  //     double[] pa = null;
+  //     Object[] oa = null;
+
+  //     if (dims > 1 || useObjects) {
+  //       ret = oa = (dims > 1
+  //           ? (Object[]) java.lang.reflect.Array
+  //               .newInstance(useObjects ? Double.class : double.class, dimsLength)
+  //           : new Double[count]);
+  //     } else {
+  //       ret = pa = new double[count];
+  //     }
+
+  //     for (; count > 0; count--) {
+  //       Object o = input.get(index++);
+
+  //       if (dims > 1 || useObjects) {
+  //         oa[length++] = o == null ? null
+  //             : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : PgResultSet.toDouble((String) o));
+  //       } else {
+  //         pa[length++] = o == null ? 0d : PgResultSet.toDouble((String) o);
+  //       }
+  //     }
+  //   } else if (type == Types.CHAR || type == Types.VARCHAR || oid == Oid.JSONB_ARRAY) {
+  //     Object[] oa = null;
+  //     ret =
+  //         oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(String.class, dimsLength)
+  //             : new String[count]);
+
+  //     for (; count > 0; count--) {
+  //       Object v = input.get(index++);
+  //       oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1) : v;
+  //     }
+  //   } else if (type == Types.TINYINT) {
+  //     Object[] oa = null;
+  //     ret = oa = (dims > 1
+  //         ? (Object[]) java.lang.reflect.Array.newInstance(Byte.class, dimsLength)
+  //         : new Byte[count]);
+
+  //     for (; count > 0; count--) {
+  //       Object b = input.get(index++);
+
+  //       if (dims > 1 || useObjects) {
+  //         oa[length++] = b == null ? null
+  //                 : (dims > 1 ? buildArray((PgArrayList) b, 0, -1) : PgResultSet.toByte((String) b));
+  //       } else {
+  //         oa[length++] = b == null ? null : PgResultSet.toByte((String) b);
+  //       }
+  //     }
+  //   } else if (type == Types.DATE) {
+  //     Object[] oa = null;
+  //     ret = oa = (dims > 1
+  //         ? (Object[]) java.lang.reflect.Array.newInstance(java.sql.Date.class, dimsLength)
+  //         : new java.sql.Date[count]);
+
+  //     for (; count > 0; count--) {
+  //       Object v = input.get(index++);
+  //       oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1)
+  //           : (v == null ? null : connection.getTimestampUtils().toDate(null, (String) v));
+  //     }
+  //   } else if (type == Types.TIME) {
+  //     Object[] oa = null;
+  //     ret = oa = (dims > 1
+  //         ? (Object[]) java.lang.reflect.Array.newInstance(java.sql.Time.class, dimsLength)
+  //         : new java.sql.Time[count]);
+
+  //     for (; count > 0; count--) {
+  //       Object v = input.get(index++);
+  //       oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1)
+  //           : (v == null ? null : connection.getTimestampUtils().toTime(null, (String) v));
+  //     }
+  //   } else if (type == Types.TIMESTAMP) {
+  //     Object[] oa = null;
+  //     ret = oa = (dims > 1
+  //         ? (Object[]) java.lang.reflect.Array.newInstance(java.sql.Timestamp.class, dimsLength)
+  //         : new java.sql.Timestamp[count]);
+
+  //     for (; count > 0; count--) {
+  //       Object v = input.get(index++);
+  //       oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1)
+  //           : (v == null ? null : connection.getTimestampUtils().toTimestamp(null, (String) v));
+  //     }
+  //   } else if (ArrayAssistantRegistry.getAssistant(oid) != null) {
+  //     ArrayAssistant arrAssistant = ArrayAssistantRegistry.getAssistant(oid);
+
+  //     Object[] oa = null;
+  //     ret = oa = (dims > 1)
+  //         ? (Object[]) java.lang.reflect.Array.newInstance(arrAssistant.baseType(), dimsLength)
+  //         : (Object[]) java.lang.reflect.Array.newInstance(arrAssistant.baseType(), count);
+
+  //     for (; count > 0; count--) {
+  //       Object v = input.get(index++);
+  //       oa[length++] = (dims > 1 && v != null) ? buildArray((PgArrayList) v, 0, -1)
+  //           : (v == null ? null : arrAssistant.buildElement((String) v));
+  //     }
+  //   } else if (dims == 1) {
+  //     Object[] oa = new Object[count];
+  //     String typeName = getBaseTypeName();
+  //     for (; count > 0; count--) {
+  //       Object v = input.get(index++);
+  //       if (v instanceof String) {
+  //         oa[length++] = connection.getObject(typeName, (String) v, null);
+  //       } else if (v instanceof byte[]) {
+  //         oa[length++] = connection.getObject(typeName, null, (byte[]) v);
+  //       } else if (v == null) {
+  //         oa[length++] = null;
+  //       } else {
+  //         throw org.postgresql.Driver.notImplemented(this.getClass(), "getArrayImpl(long,int,Map)");
+  //       }
+  //     }
+  //     ret = oa;
+  //   } else {
+  //     // other datatypes not currently supported
+  //     connection.getLogger().log(Level.FINEST, "getArrayImpl(long,int,Map) with {0}", getBaseTypeName());
+
+  //     throw org.postgresql.Driver.notImplemented(this.getClass(), "getArrayImpl(long,int,Map)");
+  //   }
+
+  //   return ret;
+  // }
 
   @Override
   public int getBaseType() throws SQLException {

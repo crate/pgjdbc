@@ -79,7 +79,7 @@ public enum PGProperty {
    */
   ASSUME_MIN_SERVER_VERSION(
       "assumeMinServerVersion",
-      "9.1",
+      "9.5",
       "Assume the server is at least that version"),
 
   /**
@@ -329,7 +329,7 @@ public enum PGProperty {
 
   LOAD_BALANCE_HOSTS(
       "loadBalanceHosts",
-      "false",
+      "true",
       "If disabled hosts are connected in the given order. If enabled hosts are chosen randomly from the set of suitable candidates"),
 
   /**
@@ -521,6 +521,11 @@ public enum PGProperty {
       "readOnly",
       "false",
       "Puts this connection in read-only mode"),
+
+  /**
+   * Puts this connection in strict mode.
+   */
+  STRICT("strict", "false", "Force driver to be compliant with the JDBC specification. Crate specific"),
 
   /**
    * Connection parameter to control behavior when
