@@ -1760,6 +1760,9 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       sql.append(" AND attname LIKE ?");
       args.add(columnNamePattern);
     }
+    // CrateDB registers a subcolumn of an object column under a subscripted name of its own,
+    // so a table with one object column reports as many columns as the object has leaves.
+    sql.append(" AND attname NOT LIKE '%[%' AND attname NOT LIKE '%.%' ");
     sql.append(" ORDER BY nspname,c.relname,attnum ");
 
     PreparedStatement stmt = prepareMetaDataStatement(sql.toString(), args);
