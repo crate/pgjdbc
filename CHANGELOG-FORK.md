@@ -1,8 +1,19 @@
 # Changelog
 
-Changes in comparison to the upstream driver, forked at version REL42.2.5.
+Changes in comparison to the upstream driver, forked at version REL42.2.5 and replayed
+onto REL42.7.13.
 
 ## [Unreleased]
+- Require CrateDB 6.0. Metadata comes from `pg_catalog` through the stock upstream queries,
+  the SQL keyword list from `pg_get_keywords()` and the type list from `pg_type`.
+  `getIndexInfo` and `getDefaultTransactionIsolation` keep their own implementations, CrateDB
+  serving neither `pg_get_indexdef` nor a `default_transaction_isolation` setting, and
+  `getColumns` still leaves out the subcolumns of an object column
+- Declare `jackson-databind` in `pgjdbc/build.gradle.kts`, upstream having replaced the Maven
+  build the dependency came with
+- Decode `char` arrays as `Byte[]` and encode `Timestamp` array elements as epoch millis in
+  `ArrayDecoding` and `ArrayEncoding`, where upstream moved array handling out of `PgArray`
+  and `PgConnection`
 
 ## [x.x.x] (2022-07-28)
 - Get schema instead of catalog and simplify get primary keys query (#39)
