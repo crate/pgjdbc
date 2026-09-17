@@ -13,6 +13,8 @@ onto REL42.7.13.
   transaction block and a pool can reset it
 - Read `ARRAY(OBJECT)` elements as `Map` and `ARRAY(ARRAY(...))` columns as `List`
 - Accept `float_vector`, `geo_point`, `geo_shape` and `character` in `createArrayOf()`
+- Set SQLState `0A000` when the driver refuses a feature CrateDB does not support, such as
+  generated keys
 
 ## [x.x.x] (2022-07-28)
 - Get schema instead of catalog and simplify get primary keys query (#39)
