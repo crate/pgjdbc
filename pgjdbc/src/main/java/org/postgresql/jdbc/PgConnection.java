@@ -1038,6 +1038,7 @@ public class PgConnection implements BaseConnection {
       throw new SQLFeatureNotSupportedException("The commit operation is not allowed. "
           + "The Crate JDBC driver does not support manual commit.");
     }
+    endTransactionBlock();
   }
 
   protected void checkClosed() throws SQLException {
@@ -1051,6 +1052,17 @@ public class PgConnection implements BaseConnection {
   public void rollback() throws SQLException {
     checkClosed();
     throwUnsupportedIfStrictMode("Rollback is not supported.");
+    endTransactionBlock();
+  }
+
+  /**
+   * CrateDB reports a transaction block as open from BEGIN until COMMIT, and has no ROLLBACK
+   * statement, so both commit and rollback end the block with COMMIT.
+   */
+  private void endTransactionBlock() throws SQLException {
+    if (!autoCommit && queryExecutor.getTransactionState() != TransactionState.IDLE) {
+      executeTransactionCommand(commitQuery);
+    }
   }
 
   @Override
