@@ -159,6 +159,10 @@ public class TypeInfoCache implements TypeInfo {
     TYPE_ALIASES.put("timestamp with time zone", "timestamptz");
     TYPE_ALIASES.put("timestamptz", "timestamptz");
     TYPE_ALIASES.put("object", "json");
+    TYPE_ALIASES.put("geo_shape", "json");
+    TYPE_ALIASES.put("geo_point", "float8");
+    TYPE_ALIASES.put("float_vector", "float4");
+    TYPE_ALIASES.put("character", "bpchar");
   }
 
   @SuppressWarnings("method.invocation")
