@@ -997,7 +997,8 @@ public class PgConnection implements BaseConnection {
     } else if (!autoCommit && strict) {
       throw new SQLFeatureNotSupportedException(
           "The auto-commit mode cannot be disabled in strict mode. "
-              + "The Crate JDBC driver does not support manual commit.");
+              + "The Crate JDBC driver does not support manual commit.",
+          PSQLState.NOT_IMPLEMENTED.getState());
     }
     if (autoCommit) {
       endTransactionBlock();
@@ -1037,7 +1038,8 @@ public class PgConnection implements BaseConnection {
 
     if (autoCommit && strict) {
       throw new SQLFeatureNotSupportedException("The commit operation is not allowed. "
-          + "The Crate JDBC driver does not support manual commit.");
+          + "The Crate JDBC driver does not support manual commit.",
+          PSQLState.NOT_IMPLEMENTED.getState());
     }
     endTransactionBlock();
   }
@@ -1932,7 +1934,7 @@ public class PgConnection implements BaseConnection {
     checkClosed();
     throw new SQLFeatureNotSupportedException(
         "Connection: prepareCall(String sql, int resultSetType, int resultSetConcurrency) "
-            + "not supported");
+            + "not supported", PSQLState.NOT_IMPLEMENTED.getState());
   }
 
   @Override
@@ -2032,7 +2034,7 @@ public class PgConnection implements BaseConnection {
 
   private void throwUnsupportedIfStrictMode(String message) throws SQLFeatureNotSupportedException {
     if (strict) {
-      throw new SQLFeatureNotSupportedException(message);
+      throw new SQLFeatureNotSupportedException(message, PSQLState.NOT_IMPLEMENTED.getState());
     }
   }
 }
