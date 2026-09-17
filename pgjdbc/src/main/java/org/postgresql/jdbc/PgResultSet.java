@@ -274,12 +274,7 @@ public class PgResultSet implements ResultSet, PGRefCursorResultSet {
           if (json == null) {
             return null;
           }
-          try {
-            return OBJECT_MAPPER.readValue(json, HashMap.class);
-          } catch (IOException e) {
-            throw new PSQLException(GT.tr("Cannot convert PGobject to map: {0}", json),
-                PSQLState.INVALID_PARAMETER_VALUE);
-          }
+          return parseJson(json);
         }
         // if the backend doesn't know the type then coerce to String
         if ("unknown".equals(type)) {
@@ -3624,6 +3619,15 @@ public class PgResultSet implements ResultSet, PGRefCursorResultSet {
       }
     }
     return 0; // SQL NULL
+  }
+
+  static Object parseJson(String json) throws SQLException {
+    try {
+      return OBJECT_MAPPER.readValue(json, Object.class);
+    } catch (IOException e) {
+      throw new PSQLException(GT.tr("Cannot parse json value: {0}", json),
+          PSQLState.DATA_ERROR, e);
+    }
   }
 
   public static Byte toByte(@Nullable String s) throws SQLException {

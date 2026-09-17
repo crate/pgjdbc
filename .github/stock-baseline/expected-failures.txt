@@ -1666,6 +1666,8 @@ org.postgresql.test.jdbc3.ProcedureTransactionTest#testProcWithRollbackInside
 org.postgresql.test.jdbc3.TypesTest#testCallableBoolean
 org.postgresql.test.jdbc4.ArrayTest#testCreateArrayOfMultiJson[1]
 org.postgresql.test.jdbc4.ArrayTest#testCreateArrayOfMultiJson[2]
+org.postgresql.test.jdbc4.JsonbTest#jsonArray[1]
+org.postgresql.test.jdbc4.JsonbTest#jsonArray[2]
 org.postgresql.test.jdbc42.CustomizeDefaultFetchSizeTest#setPredefineDefaultFetchSizeOnPreparedStatement
 org.postgresql.test.jdbc42.Jdbc42CallableStatementTest#testGetResultSetWithoutArg
 org.postgresql.test.jdbc42.Jdbc42CallableStatementTest#testGetResultSetWithoutArgUnsupportedConversion
