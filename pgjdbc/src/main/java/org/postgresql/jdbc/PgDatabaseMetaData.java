@@ -42,7 +42,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
 
@@ -160,7 +159,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
    */
   @Override
   public String getDatabaseProductName() throws SQLException {
-    return "PostgreSQL";
+    return "Crate";
   }
 
   @Override
@@ -381,61 +380,25 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   @Override
-  @SuppressWarnings("deprecation")
   public String getNumericFunctions() throws SQLException {
-    return EscapedFunctions.ABS + ',' + EscapedFunctions.ACOS + ',' + EscapedFunctions.ASIN + ','
-        + EscapedFunctions.ATAN + ',' + EscapedFunctions.ATAN2 + ',' + EscapedFunctions.CEILING
-        + ',' + EscapedFunctions.COS + ',' + EscapedFunctions.COT + ',' + EscapedFunctions.DEGREES
-        + ',' + EscapedFunctions.EXP + ',' + EscapedFunctions.FLOOR + ',' + EscapedFunctions.LOG
-        + ',' + EscapedFunctions.LOG10 + ',' + EscapedFunctions.MOD + ',' + EscapedFunctions.PI
-        + ',' + EscapedFunctions.POWER + ',' + EscapedFunctions.RADIANS + ','
-        + EscapedFunctions.ROUND + ',' + EscapedFunctions.SIGN + ',' + EscapedFunctions.SIN + ','
-        + EscapedFunctions.SQRT + ',' + EscapedFunctions.TAN + ',' + EscapedFunctions.TRUNCATE;
-
+    return "abs,ceil,floor,ln,log,random,round,sqrt,sin,asin,cos,"
+        + "acos,tan,atan";
   }
 
   @Override
-  @SuppressWarnings("deprecation")
   public String getStringFunctions() throws SQLException {
-    String funcs = EscapedFunctions.ASCII + ',' + EscapedFunctions.CHAR + ','
-        + EscapedFunctions.CONCAT + ',' + EscapedFunctions.LCASE + ',' + EscapedFunctions.LEFT + ','
-        + EscapedFunctions.LENGTH + ',' + EscapedFunctions.LTRIM + ',' + EscapedFunctions.REPEAT
-        + ',' + EscapedFunctions.RTRIM + ',' + EscapedFunctions.SPACE + ','
-        + EscapedFunctions.SUBSTRING + ',' + EscapedFunctions.UCASE;
-
-    // Currently these don't work correctly with parameterized
-    // arguments, so leave them out. They reorder the arguments
-    // when rewriting the query, but no translation layer is provided,
-    // so a setObject(N, obj) will not go to the correct parameter.
-    // ','+EscapedFunctions.INSERT+','+EscapedFunctions.LOCATE+
-    // ','+EscapedFunctions.RIGHT+
-
-    funcs += ',' + EscapedFunctions.REPLACE;
-
-    return funcs;
+    return "concat,format,substr,char_length,bit_length,octet_length,"
+        + "lower,upper";
   }
 
   @Override
-  @SuppressWarnings("deprecation")
   public String getSystemFunctions() throws SQLException {
-    return EscapedFunctions.DATABASE + ',' + EscapedFunctions.IFNULL + ',' + EscapedFunctions.USER;
+    return "";
   }
 
   @Override
-  @SuppressWarnings("deprecation")
   public String getTimeDateFunctions() throws SQLException {
-    String timeDateFuncs = EscapedFunctions.CURDATE + ',' + EscapedFunctions.CURTIME + ','
-        + EscapedFunctions.DAYNAME + ',' + EscapedFunctions.DAYOFMONTH + ','
-        + EscapedFunctions.DAYOFWEEK + ',' + EscapedFunctions.DAYOFYEAR + ','
-        + EscapedFunctions.HOUR + ',' + EscapedFunctions.MINUTE + ',' + EscapedFunctions.MONTH + ','
-        + EscapedFunctions.MONTHNAME + ',' + EscapedFunctions.NOW + ',' + EscapedFunctions.QUARTER
-        + ',' + EscapedFunctions.SECOND + ',' + EscapedFunctions.WEEK + ',' + EscapedFunctions.YEAR;
-
-    timeDateFuncs += ',' + EscapedFunctions.TIMESTAMPADD;
-
-    // +','+EscapedFunctions.TIMESTAMPDIFF;
-
-    return timeDateFuncs;
+    return "date_trunc,extract,date_format";
   }
 
   @Override
@@ -1070,41 +1033,16 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public int getDefaultTransactionIsolation() throws SQLException {
-    String sql =
-        "SELECT setting FROM pg_catalog.pg_settings WHERE name='default_transaction_isolation'";
-
-    try (Statement stmt = connection.createStatement();
-         ResultSet rs = stmt.executeQuery(sql)) {
-      String level = null;
-      if (rs.next()) {
-        level = rs.getString(1);
-      }
-      if (level == null) {
-        throw new PSQLException(
-            GT.tr(
-                "Unable to determine a value for DefaultTransactionIsolation due to missing "
-                    + " entry in pg_catalog.pg_settings WHERE name='default_transaction_isolation'."),
-            PSQLState.UNEXPECTED_ERROR);
-      }
-      // PostgreSQL returns the value in lower case, so using "toLowerCase" here would be
-      // slightly more efficient.
-      switch (level.toLowerCase(Locale.ROOT)) {
-        case "read uncommitted":
-          return Connection.TRANSACTION_READ_UNCOMMITTED;
-        case "repeatable read":
-          return Connection.TRANSACTION_REPEATABLE_READ;
-        case "serializable":
-          return Connection.TRANSACTION_SERIALIZABLE;
-        case "read committed":
-        default: // Best guess.
-          return Connection.TRANSACTION_READ_COMMITTED;
-      }
+    if (connection.isStrict()) {
+      return Connection.TRANSACTION_NONE;
+    } else {
+      return Connection.TRANSACTION_READ_COMMITTED;
     }
   }
 
   @Override
   public boolean supportsTransactions() throws SQLException {
-    return true;
+    return !connection.isStrict();
   }
 
   /**
@@ -1115,20 +1053,24 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
    */
   @Override
   public boolean supportsTransactionIsolationLevel(int level) throws SQLException {
-    switch (level) {
-      case Connection.TRANSACTION_READ_UNCOMMITTED:
-      case Connection.TRANSACTION_READ_COMMITTED:
-      case Connection.TRANSACTION_REPEATABLE_READ:
-      case Connection.TRANSACTION_SERIALIZABLE:
-        return true;
-      default:
-        return false;
+    if (connection.isStrict()) {
+      return level == Connection.TRANSACTION_NONE;
+    } else {
+      switch (level) {
+        case Connection.TRANSACTION_READ_UNCOMMITTED:
+        case Connection.TRANSACTION_READ_COMMITTED:
+        case Connection.TRANSACTION_REPEATABLE_READ:
+        case Connection.TRANSACTION_SERIALIZABLE:
+          return true;
+        default:
+          return false;
+      }
     }
   }
 
   @Override
   public boolean supportsDataDefinitionAndDataManipulationTransactions() throws SQLException {
-    return true;
+    return !connection.isStrict();
   }
 
   @Override
@@ -1560,6 +1502,15 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     return executeMetadataStatement(select.toString(), args).unwrap(PgResultSet.class).upperCaseFieldLabels();
   }
 
+  public CrateVersion getCrateVersion() throws SQLException {
+    ResultSet rs = connection.createStatement()
+        .executeQuery("select version['number'] as version from sys.nodes limit 1");
+    if (rs.next()) {
+      return new CrateVersion(castNonNull(rs.getString("version")));
+    }
+    throw new SQLException("unable to fetch Crate version");
+  }
+
   private static final Map<String, Map<String, String>> tableTypeClauses;
 
   static {
@@ -1809,6 +1760,9 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       sql.append(" AND attname LIKE ?");
       args.add(columnNamePattern);
     }
+    // CrateDB registers a subcolumn of an object column under a subscripted name of its own,
+    // so a table with one object column reports as many columns as the object has leaves.
+    sql.append(" AND attname NOT LIKE '%[%' AND attname NOT LIKE '%.%' ");
     sql.append(" ORDER BY nspname,c.relname,attnum ");
 
     PreparedStatement stmt = prepareMetaDataStatement(sql.toString(), args);
@@ -2717,7 +2671,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getTypeInfo() throws SQLException {
 
     Field[] f = new Field[18];
-    List<Tuple> v = new ArrayList<>(); // The new ResultSet tuple stuff
+    List<Tuple> v = new ArrayList<>();
 
     f[0] = new Field("TYPE_NAME", Oid.VARCHAR);
     f[1] = new Field("DATA_TYPE", Oid.INT2);
@@ -2846,156 +2800,20 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getIndexInfo(
       @Nullable String catalog, @Nullable String schema, String tableName,
       boolean unique, boolean approximate) throws SQLException {
-
-    String currentCatalog = connection.getCatalog();
-    Field[] f = new Field[14];
-    List<Tuple> v = new ArrayList<>(); // The new ResultSet tuple stuff
-
-    f[0] = new Field("TABLE_CAT", Oid.VARCHAR);
-    f[1] = new Field("TABLE_SCHEM", Oid.VARCHAR);
-    f[2] = new Field("TABLE_NAME", Oid.INT4);
-    f[3] = new Field("NON_UNIQUE", Oid.BOOL);
-    f[4] = new Field("INDEX_QUALIFIER", Oid.VARCHAR);
-    f[5] = new Field("INDEX_NAME", Oid.VARCHAR);
-    f[6] = new Field("TYPE", Oid.INT2);
-    f[7] = new Field("ORDINAL_POSITION", Oid.INT2);
-    f[8] = new Field("COLUMN_NAME", Oid.VARCHAR);
-    f[9] = new Field("ASC_OR_DESC", Oid.VARCHAR);
-    f[10] = new Field("CARDINALITY", Oid.INT8);
-    f[11] = new Field("PAGES", Oid.INT8);
-    f[12] = new Field("FILTER_CONDITION", Oid.VARCHAR);
-    f[13] = new Field("REMARKS", Oid.VARCHAR);
-
-    if (catalog != null && !catalog.equals(currentCatalog)) {
-      return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
-    }
-    /*
-     * This is a complicated function because we have three possible situations: <= 7.2 no schemas,
-     * single column functional index 7.3 schemas, single column functional index >= 7.4 schemas,
-     * multi-column expression index >= 8.3 supports ASC/DESC column info >= 9.0 no longer renames
-     * index columns on a table column rename, so we must look at the table attribute names
-     *
-     * with the single column functional index we need an extra join to the table's pg_attribute
-     * data to get the column the function operates on.
-     */
-    StringBuilder sql = new StringBuilder();
-    List<String> args = new ArrayList<>();
-    if (connection.haveMinimumServerVersion(ServerVersion.v8_3)) {
-      sql.append(
-          // language=sql
-          "SELECT "
-                + "    tmp.TABLE_CAT AS \"TABLE_CAT\", "
-                + "    tmp.TABLE_SCHEM AS \"TABLE_SCHEM\", "
-                + "    tmp.TABLE_NAME AS \"TABLE_NAME\", "
-                + "    tmp.NON_UNIQUE AS \"NON_UNIQUE\", "
-                + "    tmp.INDEX_QUALIFIER AS \"INDEX_QUALIFIER\", "
-                + "    tmp.INDEX_NAME AS \"INDEX_NAME\", "
-                + "    tmp.TYPE AS \"TYPE\", "
-                + "    tmp.ORDINAL_POSITION AS \"ORDINAL_POSITION\", "
-                + "    trim(both '\"' from pg_catalog.pg_get_indexdef(tmp.CI_OID, tmp.ORDINAL_POSITION, false)) AS \"COLUMN_NAME\", "
-                + (connection.haveMinimumServerVersion(ServerVersion.v9_6)
-                        ? "  CASE tmp.AM_NAME "
-                        + "    WHEN 'btree' THEN CASE tmp.I_INDOPTION[tmp.ORDINAL_POSITION - 1] & 1::smallint "
-                        + "      WHEN 1 THEN 'D' "
-                        + "      ELSE 'A' "
-                        + "    END "
-                        + "    ELSE NULL "
-                        + "  END AS \"ASC_OR_DESC\", "
-                        : "  CASE tmp.AM_CANORDER "
-                        + "    WHEN true THEN CASE tmp.I_INDOPTION[tmp.ORDINAL_POSITION - 1] & 1::smallint "
-                        + "      WHEN 1 THEN 'D' "
-                        + "      ELSE 'A' "
-                        + "    END "
-                        + "    ELSE NULL "
-                        + "  END AS \"ASC_OR_DESC\", ")
-                + "    tmp.CARDINALITY AS \"CARDINALITY\", "
-                + "    tmp.PAGES AS \"PAGES\", "
-                + "    tmp.FILTER_CONDITION AS \"FILTER_CONDITION\", "
-                + "    tmp.REMARKS AS \"REMARKS\""
-                + "FROM (");
-      sql.append(
-          // language=sql
-          "SELECT current_database() AS TABLE_CAT, "
-            + " n.nspname AS TABLE_SCHEM, "
-            + "  ct.relname AS TABLE_NAME, NOT i.indisunique AS NON_UNIQUE, "
-            + "  NULL AS INDEX_QUALIFIER, ci.relname AS INDEX_NAME, "
-            + "  CASE i.indisclustered "
-            + "    WHEN true THEN " + DatabaseMetaData.tableIndexClustered
-            + "    ELSE CASE am.amname "
-            + "      WHEN 'hash' THEN " + DatabaseMetaData.tableIndexHashed
-            + "      ELSE " + DatabaseMetaData.tableIndexOther
-            + "    END "
-            + "  END AS TYPE, "
-            + "  (information_schema._pg_expandarray(i.indkey)).n AS ORDINAL_POSITION, "
-            + "  ci.reltuples AS CARDINALITY, "
-            + "  ci.relpages AS PAGES, "
-            + "  pg_catalog.pg_get_expr(i.indpred, i.indrelid) AS FILTER_CONDITION, "
-            + "  ci.oid AS CI_OID, "
-            + "  i.indoption AS I_INDOPTION, "
-            + (connection.haveMinimumServerVersion(ServerVersion.v9_6) ? "  am.amname AS AM_NAME, " : "  am.amcanorder AS AM_CANORDER, ")
-            + "  d.description AS REMARKS "
-            + "FROM pg_catalog.pg_class ct "
-            + "  JOIN pg_catalog.pg_namespace n ON (ct.relnamespace = n.oid) "
-            + "  JOIN pg_catalog.pg_index i ON (ct.oid = i.indrelid) "
-            + "  JOIN pg_catalog.pg_class ci ON (ci.oid = i.indexrelid) "
-            + "  JOIN pg_catalog.pg_am am ON (ci.relam = am.oid) "
-            + "  LEFT JOIN pg_catalog.pg_description d ON (ci.oid = d.objoid) "
-            + "WHERE true ");
-
-      if (schema != null) {
-        sql.append(" AND n.nspname = ?");
-        args.add(schema);
-      }
-
-      sql.append(" AND ct.relname = ?");
-      args.add(tableName);
-
-      if (unique) {
-        sql.append(" AND i.indisunique ");
-      }
-
-      sql.append(") AS tmp");
-    } else {
-      sql.append(
-          // language=sql
-          "SELECT current_database() AS \"TABLE_CAT\", n.nspname AS \"TABLE_SCHEM\", "
-            + " ct.relname AS \"TABLE_NAME\", NOT i.indisunique AS \"NON_UNIQUE\", NULL AS \"INDEX_QUALIFIER\", ci.relname AS \"INDEX_NAME\", "
-            + " CASE i.indisclustered "
-            + " WHEN true THEN " + DatabaseMetaData.tableIndexClustered
-            + " ELSE CASE am.amname "
-            + " WHEN 'hash' THEN " + DatabaseMetaData.tableIndexHashed
-            + " ELSE " + DatabaseMetaData.tableIndexOther
-            + " END "
-            + " END AS \"TYPE\", "
-            + " a.attnum AS \"ORDINAL_POSITION\", "
-            + " CASE WHEN i.indexprs IS NULL THEN a.attname "
-            + " ELSE pg_catalog.pg_get_indexdef(ci.oid,a.attnum,false) END AS \"COLUMN_NAME\", "
-            + " NULL AS \"ASC_OR_DESC\", "
-            + " ci.reltuples AS \"CARDINALITY\", "
-            + " ci.relpages AS \"PAGES\", "
-            + " pg_catalog.pg_get_expr(i.indpred, i.indrelid) AS \"FILTER_CONDITION\", "
-            + " null AS \"REMARKS\" "
-            + " FROM pg_catalog.pg_namespace n, pg_catalog.pg_class ct, pg_catalog.pg_class ci, "
-            + " pg_catalog.pg_attribute a, pg_catalog.pg_am am "
-            + ", pg_catalog.pg_index i "
-            + " WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND ci.relam=am.oid "
-            + " AND n.oid = ct.relnamespace ");
-
-      if (schema != null) {
-        sql.append(" AND n.nspname = ?");
-        args.add(schema);
-      }
-
-      sql.append(" AND ct.relname = ?");
-      args.add(tableName);
-      if (unique) {
-        sql.append(" AND i.indisunique ");
-      }
-    }
-
-    sql.append(" ORDER BY \"NON_UNIQUE\", \"TYPE\", \"INDEX_NAME\", \"ORDINAL_POSITION\" ");
-
-    return executeMetadataStatement(sql.toString(), args).unwrap(PgResultSet.class).upperCaseFieldLabels();
+    return emptyResult(
+        col("TABLE_CAT"),
+        col("TABLE_SCHEM"),
+        col("TABLE_NAME"),
+        col("NON_UNIQUE"),
+        col("INDEX_QUALIFIER"),
+        col("INDEX_NAME"),
+        col("TYPE"),
+        col("ORDINAL_POSITION"),
+        col("COLUMN_NAME"),
+        col("ASC_OR_DESC"),
+        col("CARDINALITY"),
+        col("PAGES"),
+        col("FILTER_CONDITION"));
   }
 
   // ** JDBC 2 Extensions **
@@ -3547,8 +3365,19 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getPseudoColumns(@Nullable String catalog, @Nullable String schemaPattern,
       @Nullable String tableNamePattern, @Nullable String columnNamePattern)
       throws SQLException {
-    throw Driver.notImplemented(this.getClass(),
-        "getPseudoColumns(String, String, String, String)");
+    return emptyResult(
+        col("TABLE_CAT"),
+        col("TABLE_SCHEM"),
+        col("TABLE_NAME"),
+        col("COLUMN_NAME"),
+        col("DATA_TYPE", Oid.INT4),
+        col("COLUMN_SIZE", Oid.INT4),
+        col("DECIMAL_DIGITS", Oid.INT4),
+        col("NUM_PREC_RADIX", Oid.INT4),
+        col("COLUMN_USAGE"),
+        col("REMARKS"),
+        col("CHAR_OCTET_LENGTH", Oid.INT4),
+        col("IS_NULLABLE"));
   }
 
   @Override
@@ -3583,23 +3412,51 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getSuperTypes(@Nullable String catalog, @Nullable String schemaPattern,
       @Nullable String typeNamePattern)
       throws SQLException {
-    throw Driver.notImplemented(this.getClass(),
-        "getSuperTypes(String,String,String)");
+    return emptyResult(
+        col("TYPE_CAT"),
+        col("TYPE_SCHEM"),
+        col("TYPE_NAME"),
+        col("SUPERTYPE_CAT"),
+        col("SUPERTYPE_SCHEM"),
+        col("SUPERTYPE_NAME"));
   }
 
   @Override
   public ResultSet getSuperTables(@Nullable String catalog, @Nullable String schemaPattern,
       @Nullable String tableNamePattern)
       throws SQLException {
-    throw Driver.notImplemented(this.getClass(),
-        "getSuperTables(String,String,String,String)");
+    return emptyResult(
+        col("TABLE_CAT"),
+        col("TABLE_SCHEM"),
+        col("TABLE_NAME"),
+        col("SUPERTABLE_NAME"));
   }
 
   @Override
   public ResultSet getAttributes(@Nullable String catalog, @Nullable String schemaPattern,
       @Nullable String typeNamePattern, @Nullable String attributeNamePattern) throws SQLException {
-    throw Driver.notImplemented(this.getClass(),
-        "getAttributes(String,String,String,String)");
+    return emptyResult(
+        col("TYPE_CAT"),
+        col("TYPE_SCHEM"),
+        col("TYPE_NAME"),
+        col("ATTR_NAME"),
+        col("DATA_TYPE"),
+        col("ATTR_TYPE_NAME"),
+        col("ATTR_SIZE"),
+        col("DECIMAL_DIGITS"),
+        col("NUM_PREC_RADIX"),
+        col("NULLABLE"),
+        col("REMARKS"),
+        col("ATTR_DEF"),
+        col("SQL_DATA_TYPE"),
+        col("SQL_DATETIME_SUB"),
+        col("CHAR_OCTET_LENGTH"),
+        col("ORDINAL_POSITION"),
+        col("IS_NULLABLE"),
+        col("SCOPE_CATALOG"),
+        col("SCOPE_SCHEMA"),
+        col("SCOPE_TABLE"),
+        col("SOURCE_DATA_TYPE"));
   }
 
   @Override
@@ -3650,5 +3507,18 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   public boolean supportsStatementPooling() throws SQLException {
     return false;
+  }
+
+  private static Field col(String name, int oid) {
+    return new Field(name, oid);
+  }
+
+  private static Field col(String name) {
+    return new Field(name, Oid.VARCHAR);
+  }
+
+  private ResultSet emptyResult(Field... fields) throws SQLException {
+    return ((BaseStatement) createMetaDataStatement())
+        .createDriverResultSet(fields, Collections.emptyList());
   }
 }

@@ -34,6 +34,7 @@ import org.postgresql.util.PGtokenizer;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.checkerframework.checker.index.qual.NonNegative;
 import org.checkerframework.checker.index.qual.Positive;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
@@ -98,6 +99,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 public class PgResultSet implements ResultSet, PGRefCursorResultSet {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   // needed for updateable result set support
   private boolean updateable;
@@ -265,6 +268,14 @@ public class PgResultSet implements ResultSet, PGRefCursorResultSet {
       default:
         String type = getPGType(columnIndex);
 
+        if ("json".equals(type)) {
+          PGobject pgObject = getObject(columnIndex, PGobject.class);
+          String json = pgObject == null ? null : pgObject.getValue();
+          if (json == null) {
+            return null;
+          }
+          return parseJson(json);
+        }
         // if the backend doesn't know the type then coerce to String
         if ("unknown".equals(type)) {
           return getString(columnIndex);
@@ -3606,6 +3617,23 @@ public class PgResultSet implements ResultSet, PGRefCursorResultSet {
         throw new PSQLException(GT.tr("Bad value for type {0} : {1}", "double", s),
             PSQLState.NUMERIC_VALUE_OUT_OF_RANGE);
       }
+    }
+    return 0; // SQL NULL
+  }
+
+  static Object parseJson(String json) throws SQLException {
+    try {
+      return OBJECT_MAPPER.readValue(json, Object.class);
+    } catch (IOException e) {
+      throw new PSQLException(GT.tr("Cannot parse json value: {0}", json),
+          PSQLState.DATA_ERROR, e);
+    }
+  }
+
+  public static Byte toByte(@Nullable String s) throws SQLException {
+    if (s != null) {
+      s = s.trim();
+      return Byte.parseByte(s);
     }
     return 0; // SQL NULL
   }
