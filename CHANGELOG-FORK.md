@@ -9,6 +9,8 @@ onto REL42.7.13.
 - Decode `char` arrays as `Byte[]` and encode `Timestamp` array elements as epoch millis in
   `ArrayDecoding` and `ArrayEncoding`, where upstream moved array handling out of `PgArray`
   and `PgConnection`
+- Send `COMMIT` from `commit()` and `rollback()`, so a connection that saw `BEGIN` leaves the
+  transaction block and a pool can reset it
 
 ## [x.x.x] (2022-07-28)
 - Get schema instead of catalog and simplify get primary keys query (#39)
