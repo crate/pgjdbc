@@ -21,6 +21,7 @@ import org.postgresql.core.ProtocolVersion;
 import org.postgresql.core.Query;
 import org.postgresql.core.QueryExecutor;
 import org.postgresql.core.ReplicationProtocol;
+import org.postgresql.core.ResultHandlerBase;
 import org.postgresql.core.ServerVersion;
 import org.postgresql.core.SqlCommand;
 import org.postgresql.core.TransactionState;
@@ -166,6 +167,9 @@ public class PgConnection implements BaseConnection {
 
   /* Actual network handler */
   private final QueryExecutor queryExecutor;
+
+  /* Query that runs COMMIT */
+  private final Query commitQuery;
 
   private final CachedQuery setSessionReadOnly;
 
@@ -373,6 +377,11 @@ public class PgConnection implements BaseConnection {
       // Initialize timestamp stuff
       timestampUtils = new TimestampUtils(!queryExecutor.getIntegerDateTimes(),
           new QueryExecutorTimeZoneProvider(queryExecutor));
+
+      // Initialize common queries.
+      // isParameterized==true so full parse is performed and the engine knows the query
+      // is not a compound query with ; inside, so it could use parse/bind/exec messages
+      commitQuery = createQuery("COMMIT", false, true).query;
 
       int unknownLength = PGProperty.UNKNOWN_LENGTH.getInt(info);
 
@@ -990,6 +999,9 @@ public class PgConnection implements BaseConnection {
           "The auto-commit mode cannot be disabled in strict mode. "
               + "The Crate JDBC driver does not support manual commit.");
     }
+    if (autoCommit) {
+      endTransactionBlock();
+    }
     this.autoCommit = autoCommit;
   }
 
@@ -997,6 +1009,26 @@ public class PgConnection implements BaseConnection {
   public boolean getAutoCommit() throws SQLException {
     checkClosed();
     return this.autoCommit;
+  }
+
+  private void executeTransactionCommand(Query query) throws SQLException {
+    int flags = QueryExecutor.QUERY_NO_METADATA | QueryExecutor.QUERY_NO_RESULTS
+        | QueryExecutor.QUERY_SUPPRESS_BEGIN;
+    if (prepareThreshold == 0) {
+      flags |= QueryExecutor.QUERY_ONESHOT;
+    }
+
+    try {
+      getQueryExecutor().execute(query, null, new TransactionCommandHandler(), 0, 0, flags);
+    } catch (SQLException e) {
+      // Don't retry composite queries as it might get partially executed
+      if (query.getSubqueries() != null || !queryExecutor.willHealOnRetry(e)) {
+        throw e;
+      }
+      query.close();
+      // retry
+      getQueryExecutor().execute(query, null, new TransactionCommandHandler(), 0, 0, flags);
+    }
   }
 
   @Override
@@ -1007,6 +1039,7 @@ public class PgConnection implements BaseConnection {
       throw new SQLFeatureNotSupportedException("The commit operation is not allowed. "
           + "The Crate JDBC driver does not support manual commit.");
     }
+    endTransactionBlock();
   }
 
   protected void checkClosed() throws SQLException {
@@ -1020,6 +1053,17 @@ public class PgConnection implements BaseConnection {
   public void rollback() throws SQLException {
     checkClosed();
     throwUnsupportedIfStrictMode("Rollback is not supported.");
+    endTransactionBlock();
+  }
+
+  /**
+   * CrateDB reports a transaction block as open from BEGIN until COMMIT, and has no ROLLBACK
+   * statement, so both commit and rollback end the block with COMMIT.
+   */
+  private void endTransactionBlock() throws SQLException {
+    if (!autoCommit && queryExecutor.getTransactionState() != TransactionState.IDLE) {
+      executeTransactionCommand(commitQuery);
+    }
   }
 
   @Override
@@ -1224,6 +1268,16 @@ public class PgConnection implements BaseConnection {
     // Backwards-compatibility hand-holding.
     PGNotification[] notifications = queryExecutor.getNotifications();
     return notifications;
+  }
+
+  /**
+   * Handler for transaction queries.
+   */
+  private class TransactionCommandHandler extends ResultHandlerBase {
+    @Override
+    public void handleWarning(SQLWarning warning) {
+      PgConnection.this.addWarning(warning);
+    }
   }
 
   @Override
