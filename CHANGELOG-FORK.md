@@ -12,6 +12,7 @@ onto REL42.7.13.
 - Send `COMMIT` from `commit()` and `rollback()`, so a connection that saw `BEGIN` leaves the
   transaction block and a pool can reset it
 - Read `ARRAY(OBJECT)` elements as `Map` and `ARRAY(ARRAY(...))` columns as `List`
+- Accept `float_vector`, `geo_point`, `geo_shape` and `character` in `createArrayOf()`
 
 ## [x.x.x] (2022-07-28)
 - Get schema instead of catalog and simplify get primary keys query (#39)
