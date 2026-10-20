@@ -1,8 +1,20 @@
 # Changelog
 
-Changes in comparison to the upstream driver, forked at version REL42.2.5.
+Changes in comparison to the upstream driver, forked at version REL42.2.5 and replayed
+onto REL42.7.14.
 
 ## [Unreleased]
+- Answer `DatabaseMetaData` with pgJDBC's pg_catalog queries, which need CrateDB 6.0 or later.
+  The fork's information_schema queries listed in the older entries below are not carried over
+- Return generated keys through `INSERT ... RETURNING`, which CrateDB supports since 4.2.0,
+  instead of refusing `getGeneratedKeys()` and the generated-keys overloads
+- Use the `doc` schema when neither the URL nor the properties name a database
+- Keep upstream's `getMoreResults()`, which already returns `false` after the last result
+- Declare `jackson-databind` 2.18.12 in `pgjdbc/build.gradle.kts`, for the shaded jar and in
+  the source distribution's pom, upstream having replaced the Maven build the dependency came with
+- Decode `char` arrays as `Byte[]` and encode `Timestamp` array elements as epoch millis in
+  `ArrayDecoding` and `ArrayEncoding`, where upstream moved array handling out of `PgArray`
+  and `PgConnection`
 
 ## [x.x.x] (2022-07-28)
 - Get schema instead of catalog and simplify get primary keys query (#39)

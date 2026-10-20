@@ -14,8 +14,8 @@ PostgreSQL native network protocol.
 ## Details
 
 This is a fork of the vanilla [PostgreSQL JDBC Driver] to support specific
-details for [CrateDB]. For example, this is to avoid certain statements and
-queries on internal PostgreSQL tables which are not supported by CrateDB.
+details for [CrateDB]. For example, it maps CrateDB's type names, refuses calls
+CrateDB cannot serve, and adapts transaction handling to CrateDB.
 
 It is used by the [CrateDB legacy JDBC driver] for covering certain usage
 scenarios around CrateDB and is not released otherwise.
