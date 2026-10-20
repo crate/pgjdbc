@@ -1,8 +1,14 @@
 # Changelog
 
-Changes in comparison to the upstream driver, forked at version REL42.2.5.
+Changes in comparison to the upstream driver, forked at version REL42.2.5 and replayed
+onto REL42.7.13.
 
 ## [Unreleased]
+- Declare `jackson-databind` in `pgjdbc/build.gradle.kts`, upstream having replaced the Maven
+  build the dependency came with
+- Decode `char` arrays as `Byte[]` and encode `Timestamp` array elements as epoch millis in
+  `ArrayDecoding` and `ArrayEncoding`, where upstream moved array handling out of `PgArray`
+  and `PgConnection`
 
 ## [x.x.x] (2022-07-28)
 - Get schema instead of catalog and simplify get primary keys query (#39)
