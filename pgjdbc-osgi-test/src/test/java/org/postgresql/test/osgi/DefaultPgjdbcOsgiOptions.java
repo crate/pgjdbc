@@ -36,6 +36,9 @@ public class DefaultPgjdbcOsgiOptions {
         mavenBundle("org.ow2.asm", "asm-util").versionAsInProject(),
         // spifly requires for osgi.extender=osgi.serviceloader.registrar
         mavenBundle("org.apache.aries.spifly", "org.apache.aries.spifly.dynamic.bundle").versionAsInProject(),
+        mavenBundle("com.fasterxml.jackson.core", "jackson-annotations").versionAsInProject(),
+        mavenBundle("com.fasterxml.jackson.core", "jackson-core").versionAsInProject(),
+        mavenBundle("com.fasterxml.jackson.core", "jackson-databind").versionAsInProject(),
         mavenBundle("org.postgresql", "postgresql").versionAsInProject(),
         systemProperty("logback.configurationFile")
             .value(System.getProperty("logback.configurationFile")),
