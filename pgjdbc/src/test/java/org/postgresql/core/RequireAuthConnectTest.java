@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import org.postgresql.Driver;
 import org.postgresql.PGProperty;
 import org.postgresql.util.PSQLState;
 
@@ -37,6 +38,16 @@ import javax.net.SocketFactory;
  * and the driver must not send the password.
  */
 public class RequireAuthConnectTest {
+  static {
+    // The driver does not register itself with DriverManager.
+    try {
+      if (!Driver.isRegistered()) {
+        Driver.register();
+      }
+    } catch (SQLException e) {
+      throw new ExceptionInInitializerError(e);
+    }
+  }
 
   /** AuthenticationCleartextPassword: the server asks for the password. */
   private static final byte[] CLEARTEXT_PASSWORD_REQUEST =

@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.postgresql.util.internal.Nullness.castNonNull;
 
+import org.postgresql.Driver;
 import org.postgresql.PGConnection;
 import org.postgresql.PGProperty;
 import org.postgresql.core.BaseConnection;
@@ -285,7 +286,14 @@ public class TestUtil {
       p.putAll(System.getProperties());
       System.getProperties().putAll(p);
 
+      // The driver does not register itself with DriverManager.
+      if (!Driver.isRegistered()) {
+        Driver.register();
+      }
+
       initialized = true;
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
     }
   }
 
