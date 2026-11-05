@@ -51,6 +51,8 @@ val generateDependenciesProperties by tasks.registering(WriteProperties::class) 
     property("${project.group}/${project.name}/version", "${project.version}")
     dependsOn(configurations.testRuntimeClasspath)
     dependsOn(pgjdbcRepository)
+    // doFirst reads the versions after the cache key is computed, so the classpath is an input.
+    inputs.files(configurations.testRuntimeClasspath).withPropertyName("testRuntimeClasspath")
     doFirst {
         configurations.testRuntimeClasspath.get().resolvedConfiguration.resolvedArtifacts.forEach {
             val prefix = "${it.moduleVersion.id.group}/${it.moduleVersion.id.name}"
