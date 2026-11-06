@@ -14,6 +14,8 @@ onto REL42.7.14.
   and `getDefaultTransactionIsolation` keep the fork's implementations, CrateDB serving neither
   `pg_get_indexdef` nor a `default_transaction_isolation` setting, and `getColumns` leaves out
   the subcolumns of an object column
+- List in `getTypeInfo` only the type names CrateDB accepts in `CREATE TABLE`, `object` and
+  `geo_point` included, without the serial types
 - Return generated keys through `INSERT ... RETURNING`, which CrateDB supports since 4.2.0,
   instead of refusing `getGeneratedKeys()` and the generated-keys overloads
 - Use the `doc` schema when neither the URL nor the properties name a database

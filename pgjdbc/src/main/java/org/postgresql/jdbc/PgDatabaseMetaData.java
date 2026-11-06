@@ -2669,6 +2669,30 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
         foreignSchema, foreignTable);
   }
 
+  // The names CREATE TABLE accepts, keyed by the pg_type name of the column they declare.
+  private static final Map<String, List<String>> typeNames = new HashMap<>();
+
+  static {
+    typeNames.put("bool", Arrays.asList("boolean"));
+    typeNames.put("char", Arrays.asList("byte"));
+    typeNames.put("int2", Arrays.asList("smallint", "short", "int2"));
+    typeNames.put("int4", Arrays.asList("integer", "int", "int4"));
+    typeNames.put("int8", Arrays.asList("bigint", "long", "int8"));
+    typeNames.put("float4", Arrays.asList("real", "float", "float4"));
+    typeNames.put("float8", Arrays.asList("double precision", "double", "float8"));
+    typeNames.put("numeric", Arrays.asList("numeric", "decimal"));
+    typeNames.put("bpchar", Arrays.asList("character", "char"));
+    typeNames.put("varchar",
+        Arrays.asList("varchar", "character varying", "text", "string", "name", "ip"));
+    typeNames.put("bit", Arrays.asList("bit"));
+    typeNames.put("timestamp", Arrays.asList("timestamp without time zone", "timestamp"));
+    typeNames.put("timestamptz", Arrays.asList("timestamp with time zone", "timestamptz"));
+    typeNames.put("uuid", Arrays.asList("uuid"));
+    typeNames.put("json", Arrays.asList("object", "geo_shape"));
+    typeNames.put("point", Arrays.asList("geo_point"));
+    typeNames.put("_float4", Arrays.asList("float_vector"));
+  }
+
   @Override
   public ResultSet getTypeInfo() throws SQLException {
 
@@ -2724,12 +2748,14 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     }
 
     while (rs.next()) {
+      List<String> names = typeNames.get(castNonNull(rs.getString(1)));
+      if (names == null) {
+        continue;
+      }
       byte[] @Nullable [] tuple = new byte[19][];
-      String typname = castNonNull(rs.getString(1));
       int typeOid = (int) rs.getLong(2);
 
-      tuple[0] = connection.encodeString(typname);
-      int sqlType = connection.getTypeInfo().getSQLType(typname);
+      int sqlType = connection.getTypeInfo().getSQLType(typeOid);
       tuple[1] =
           connection.encodeString(Integer.toString(sqlType));
 
@@ -2760,29 +2786,12 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       // 12 - LOCAL_TYPE_NAME is null
       // 15 & 16 are unused so we return null
       tuple[17] = b10; // everything is base 10
-      v.add(new Tuple(tuple));
 
-      // add pseudo-type serial, bigserial, smallserial
-      if ("int4".equals(typname)) {
-        byte[] @Nullable [] tuple1 = tuple.clone();
-
-        tuple1[0] = connection.encodeString("serial");
-        tuple1[11] = bt;
-        v.add(new Tuple(tuple1));
-      } else if ("int8".equals(typname)) {
-        byte[] @Nullable [] tuple1 = tuple.clone();
-
-        tuple1[0] = connection.encodeString("bigserial");
-        tuple1[11] = bt;
-        v.add(new Tuple(tuple1));
-      } else if ("int2".equals(typname) && connection.haveMinimumServerVersion(ServerVersion.v9_2)) {
-        byte[] @Nullable [] tuple1 = tuple.clone();
-
-        tuple1[0] = connection.encodeString("smallserial");
-        tuple1[11] = bt;
-        v.add(new Tuple(tuple1));
+      for (String name : names) {
+        byte[] @Nullable [] row = tuple.clone();
+        row[0] = connection.encodeString(name);
+        v.add(new Tuple(row));
       }
-
     }
     rs.close();
     stmt.close();
