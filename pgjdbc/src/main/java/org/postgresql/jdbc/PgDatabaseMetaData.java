@@ -1560,6 +1560,17 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     return executeMetadataStatement(select.toString(), args).unwrap(PgResultSet.class).upperCaseFieldLabels();
   }
 
+  public CrateVersion getCrateVersion() throws SQLException {
+    try (Statement stmt = connection.createStatement();
+        ResultSet rs = stmt.executeQuery(
+            "select version['number'] as version from sys.nodes limit 1")) {
+      if (rs.next()) {
+        return new CrateVersion(castNonNull(rs.getString("version")));
+      }
+    }
+    throw new SQLException("unable to fetch Crate version");
+  }
+
   private static final Map<String, Map<String, String>> tableTypeClauses;
 
   static {
