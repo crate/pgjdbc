@@ -227,6 +227,19 @@ final class ArrayDecoding {
     }
   };
 
+  private static final ArrayDecoder<Byte[]> BYTE_OBJ_ARRAY = new AbstractObjectArrayDecoder<Byte[]>(Byte.class) {
+
+    @Override
+    Object parseValue(int length, ByteBuffer bytes, BaseConnection connection) {
+      return bytes.get();
+    }
+
+    @Override
+    Object parseValue(String stringVal, BaseConnection connection) throws SQLException {
+      return PgResultSet.toByte(stringVal);
+    }
+  };
+
   private static final ArrayDecoder<Double[]> DOUBLE_OBJ_ARRAY = new AbstractObjectArrayDecoder<Double[]>(
       Double.class) {
 
@@ -383,7 +396,7 @@ final class ArrayDecoding {
     OID_TO_DECODER.put(Oid.BYTEA, BYTE_ARRAY_ARRAY);
     OID_TO_DECODER.put(Oid.NUMERIC, BIG_DECIMAL_STRING_DECODER);
     OID_TO_DECODER.put(Oid.BPCHAR, STRING_ONLY_DECODER);
-    OID_TO_DECODER.put(Oid.CHAR, STRING_ONLY_DECODER);
+    OID_TO_DECODER.put(Oid.CHAR, BYTE_OBJ_ARRAY);
     OID_TO_DECODER.put(Oid.JSON, STRING_ONLY_DECODER);
     OID_TO_DECODER.put(Oid.DATE, DATE_DECODER);
     OID_TO_DECODER.put(Oid.TIME, TIME_DECODER);

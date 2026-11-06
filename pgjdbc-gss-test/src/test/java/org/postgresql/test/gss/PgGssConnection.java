@@ -5,6 +5,7 @@
 
 package org.postgresql.test.gss;
 
+import org.postgresql.Driver;
 import org.postgresql.PGProperty;
 
 import java.sql.Connection;
@@ -19,6 +20,17 @@ import java.util.Properties;
  * whose GSS authentication and encryption status is then asserted.
  */
 class PgGssConnection {
+  static {
+    // The driver does not register itself with DriverManager.
+    try {
+      if (!Driver.isRegistered()) {
+        Driver.register();
+      }
+    } catch (SQLException e) {
+      throw new ExceptionInInitializerError(e);
+    }
+  }
+
   private final String host;
   private final int port;
   private final Properties properties = new Properties();
