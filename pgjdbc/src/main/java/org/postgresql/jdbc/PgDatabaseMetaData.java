@@ -2336,48 +2336,15 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getVersionColumns(
       @Nullable String catalog, @Nullable String schema, String table)
       throws SQLException {
-    String currentCatalog = connection.getCatalog();
-    Field[] f = new Field[8];
-    List<Tuple> v = new ArrayList<>(); // The new ResultSet tuple stuff
-
-    f[0] = new Field("SCOPE", Oid.INT2);
-    f[1] = new Field("COLUMN_NAME", Oid.VARCHAR);
-    f[2] = new Field("DATA_TYPE", Oid.INT2);
-    f[3] = new Field("TYPE_NAME", Oid.VARCHAR);
-    f[4] = new Field("COLUMN_SIZE", Oid.INT4);
-    f[5] = new Field("BUFFER_LENGTH", Oid.INT4);
-    f[6] = new Field("DECIMAL_DIGITS", Oid.INT2);
-    f[7] = new Field("PSEUDO_COLUMN", Oid.INT2);
-
-    if (catalog != null && !catalog.equals(currentCatalog)) {
-      return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
-    }
-    byte[] @Nullable [] tuple = new byte[8][];
-
-    /*
-     * Postgresql does not have any column types that are automatically updated like some databases'
-     * timestamp type. We can't tell what rules or triggers might be doing, so we are left with the
-     * system columns that change on an update. An update may change all of the following system
-     * columns: ctid, xmax, xmin, cmax, and cmin. Depending on if we are in a transaction and
-     * whether we roll it back or not the only guaranteed change is to ctid. -KJ
-     */
-
-    tuple[0] = null;
-    tuple[1] = connection.encodeString("ctid");
-    tuple[2] =
-        connection.encodeString(Integer.toString(connection.getTypeInfo().getSQLType("tid")));
-    tuple[3] = connection.encodeString("tid");
-    tuple[4] = null;
-    tuple[5] = null;
-    tuple[6] = null;
-    tuple[7] =
-        connection.encodeString(Integer.toString(DatabaseMetaData.versionColumnPseudo));
-    v.add(new Tuple(tuple));
-
-    /*
-     * Perhaps we should check that the given catalog.schema.table actually exists. -KJ
-     */
-    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
+    return emptyResult(
+        col("SCOPE", Oid.INT2),
+        col("COLUMN_NAME"),
+        col("DATA_TYPE", Oid.INT4),
+        col("TYPE_NAME"),
+        col("COLUMN_SIZE", Oid.INT4),
+        col("BUFFER_LENGTH", Oid.INT4),
+        col("DECIMAL_DIGITS", Oid.INT2),
+        col("PSEUDO_COLUMN", Oid.INT2));
   }
 
   @Override
