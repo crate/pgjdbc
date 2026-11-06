@@ -6,6 +6,8 @@ onto REL42.7.14.
 ## [Unreleased]
 - Answer `DatabaseMetaData` with pgJDBC's pg_catalog queries, which need CrateDB 6.0 or later.
   The fork's information_schema queries listed in the older entries below are not carried over
+- Run the stock tests only in the Stock baseline workflow, which fails when the tests that fail
+  against PostgreSQL differ from `.github/stock-baseline/expected-failures.txt`
 - Return generated keys through `INSERT ... RETURNING`, which CrateDB supports since 4.2.0,
   instead of refusing `getGeneratedKeys()` and the generated-keys overloads
 - Use the `doc` schema when neither the URL nor the properties name a database
