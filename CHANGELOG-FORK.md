@@ -17,6 +17,8 @@ onto REL42.7.14.
 - List in `getTypeInfo` only the type names CrateDB accepts in `CREATE TABLE`, `object` and
   `geo_point` included, without the serial types
 - Return no rows from `getVersionColumns`, CrateDB having no `ctid` column
+- Report `pg_catalog` tables as `SYSTEM TABLE` in `getTables`, CrateDB anchoring `~` to the
+  whole name
 - Return generated keys through `INSERT ... RETURNING`, which CrateDB supports since 4.2.0,
   instead of refusing `getGeneratedKeys()` and the generated-keys overloads
 - Use the `doc` schema when neither the URL nor the properties name a database
