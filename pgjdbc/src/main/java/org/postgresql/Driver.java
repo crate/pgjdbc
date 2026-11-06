@@ -644,9 +644,8 @@ public class Driver implements java.sql.Driver {
     // priority 5 - PGProperty defaults for PGHOST, PGPORT, PGDBNAME
     result.putIfAbsent(PGProperty.PG_PORT.getName(), castNonNull(PGProperty.PG_PORT.getDefaultValue()));
     result.putIfAbsent(PGProperty.PG_HOST.getName(), castNonNull(PGProperty.PG_HOST.getDefaultValue()));
-    if (PGProperty.USER.getOrDefault(result) != null) {
-      result.putIfAbsent(PGProperty.PG_DBNAME.getName(), castNonNull(PGProperty.USER.getOrDefault(result)));
-    }
+    // crate takes the database name as the default schema, and its default schema is doc.
+    result.putIfAbsent(PGProperty.PG_DBNAME.getName(), "doc");
 
     // consistency check
     if (!PGPropertyUtil.propertiesConsistencyCheck(result)) {

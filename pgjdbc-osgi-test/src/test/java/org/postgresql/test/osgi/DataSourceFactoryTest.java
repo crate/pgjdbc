@@ -133,6 +133,8 @@ public class DataSourceFactoryTest {
         p2.put(entry.getKey(), entry.getValue());
       }
     }
+    // The driver connects to the doc schema when no database is named.
+    p2.setProperty(DataSourceFactory.JDBC_DATABASE_NAME, p.getProperty("test.url.PGDBNAME", "test"));
     return p2;
   }
 
