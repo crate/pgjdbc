@@ -1419,7 +1419,7 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
 
     StringBuilder select = new StringBuilder(
         "SELECT current_database() AS \"TABLE_CAT\", n.nspname AS \"TABLE_SCHEM\", c.relname AS \"TABLE_NAME\", "
-             + " CASE n.nspname ~ '^pg_' OR n.nspname = 'information_schema' "
+             + " CASE n.nspname LIKE 'pg\\_%' OR n.nspname = 'information_schema' "
              + " WHEN true THEN CASE "
              + " WHEN n.nspname = 'pg_catalog' OR n.nspname = 'information_schema' THEN CASE c.relkind "
              + "  WHEN 'r' THEN 'SYSTEM TABLE' "
@@ -1519,26 +1519,26 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     tableTypeClauses = new HashMap<>();
     Map<String, String> ht = new HashMap<>();
     tableTypeClauses.put("TABLE", ht);
-    ht.put("SCHEMAS", "c.relkind = 'r' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'");
-    ht.put("NOSCHEMAS", "c.relkind = 'r' AND c.relname !~ '^pg_'");
+    ht.put("SCHEMAS", "c.relkind = 'r' AND n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema'");
+    ht.put("NOSCHEMAS", "c.relkind = 'r' AND c.relname NOT LIKE 'pg\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("PARTITIONED TABLE", ht);
-    ht.put("SCHEMAS", "c.relkind = 'p' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'");
-    ht.put("NOSCHEMAS", "c.relkind = 'p' AND c.relname !~ '^pg_'");
+    ht.put("SCHEMAS", "c.relkind = 'p' AND n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema'");
+    ht.put("NOSCHEMAS", "c.relkind = 'p' AND c.relname NOT LIKE 'pg\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("VIEW", ht);
     ht.put("SCHEMAS",
         "c.relkind = 'v' AND n.nspname <> 'pg_catalog' AND n.nspname <> 'information_schema'");
-    ht.put("NOSCHEMAS", "c.relkind = 'v' AND c.relname !~ '^pg_'");
+    ht.put("NOSCHEMAS", "c.relkind = 'v' AND c.relname NOT LIKE 'pg\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("INDEX", ht);
     ht.put("SCHEMAS",
-        "c.relkind = 'i' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'");
-    ht.put("NOSCHEMAS", "c.relkind = 'i' AND c.relname !~ '^pg_'");
+        "c.relkind = 'i' AND n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema'");
+    ht.put("NOSCHEMAS", "c.relkind = 'i' AND c.relname NOT LIKE 'pg\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("PARTITIONED INDEX", ht);
-    ht.put("SCHEMAS", "c.relkind = 'I' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'");
-    ht.put("NOSCHEMAS", "c.relkind = 'I' AND c.relname !~ '^pg_'");
+    ht.put("SCHEMAS", "c.relkind = 'I' AND n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema'");
+    ht.put("NOSCHEMAS", "c.relkind = 'I' AND c.relname NOT LIKE 'pg\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("SEQUENCE", ht);
     ht.put("SCHEMAS", "c.relkind = 'S'");
@@ -1546,49 +1546,49 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     ht = new HashMap<>();
     tableTypeClauses.put("TYPE", ht);
     ht.put("SCHEMAS",
-        "c.relkind = 'c' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'");
-    ht.put("NOSCHEMAS", "c.relkind = 'c' AND c.relname !~ '^pg_'");
+        "c.relkind = 'c' AND n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema'");
+    ht.put("NOSCHEMAS", "c.relkind = 'c' AND c.relname NOT LIKE 'pg\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("SYSTEM TABLE", ht);
     ht.put("SCHEMAS",
         "c.relkind = 'r' AND (n.nspname = 'pg_catalog' OR n.nspname = 'information_schema')");
     ht.put("NOSCHEMAS",
-        "c.relkind = 'r' AND c.relname ~ '^pg_' AND c.relname !~ '^pg_toast_' AND c.relname !~ '^pg_temp_'");
+        "c.relkind = 'r' AND c.relname LIKE 'pg\\_%' AND c.relname NOT LIKE 'pg\\_toast\\_%' AND c.relname NOT LIKE 'pg\\_temp\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("SYSTEM TOAST TABLE", ht);
     ht.put("SCHEMAS", "c.relkind = 'r' AND n.nspname = 'pg_toast'");
-    ht.put("NOSCHEMAS", "c.relkind = 'r' AND c.relname ~ '^pg_toast_'");
+    ht.put("NOSCHEMAS", "c.relkind = 'r' AND c.relname LIKE 'pg\\_toast\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("SYSTEM TOAST INDEX", ht);
     ht.put("SCHEMAS", "c.relkind = 'i' AND n.nspname = 'pg_toast'");
-    ht.put("NOSCHEMAS", "c.relkind = 'i' AND c.relname ~ '^pg_toast_'");
+    ht.put("NOSCHEMAS", "c.relkind = 'i' AND c.relname LIKE 'pg\\_toast\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("SYSTEM VIEW", ht);
     ht.put("SCHEMAS",
         "c.relkind = 'v' AND (n.nspname = 'pg_catalog' OR n.nspname = 'information_schema') ");
-    ht.put("NOSCHEMAS", "c.relkind = 'v' AND c.relname ~ '^pg_'");
+    ht.put("NOSCHEMAS", "c.relkind = 'v' AND c.relname LIKE 'pg\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("SYSTEM INDEX", ht);
     ht.put("SCHEMAS",
         "c.relkind = 'i' AND (n.nspname = 'pg_catalog' OR n.nspname = 'information_schema') ");
     ht.put("NOSCHEMAS",
-        "c.relkind = 'v' AND c.relname ~ '^pg_' AND c.relname !~ '^pg_toast_' AND c.relname !~ '^pg_temp_'");
+        "c.relkind = 'v' AND c.relname LIKE 'pg\\_%' AND c.relname NOT LIKE 'pg\\_toast\\_%' AND c.relname NOT LIKE 'pg\\_temp\\_%'");
     ht = new HashMap<>();
     tableTypeClauses.put("TEMPORARY TABLE", ht);
-    ht.put("SCHEMAS", "c.relkind IN ('r','p') AND n.nspname ~ '^pg_temp_' ");
-    ht.put("NOSCHEMAS", "c.relkind IN ('r','p') AND c.relname ~ '^pg_temp_' ");
+    ht.put("SCHEMAS", "c.relkind IN ('r','p') AND n.nspname LIKE 'pg\\_temp\\_%' ");
+    ht.put("NOSCHEMAS", "c.relkind IN ('r','p') AND c.relname LIKE 'pg\\_temp\\_%' ");
     ht = new HashMap<>();
     tableTypeClauses.put("TEMPORARY INDEX", ht);
-    ht.put("SCHEMAS", "c.relkind = 'i' AND n.nspname ~ '^pg_temp_' ");
-    ht.put("NOSCHEMAS", "c.relkind = 'i' AND c.relname ~ '^pg_temp_' ");
+    ht.put("SCHEMAS", "c.relkind = 'i' AND n.nspname LIKE 'pg\\_temp\\_%' ");
+    ht.put("NOSCHEMAS", "c.relkind = 'i' AND c.relname LIKE 'pg\\_temp\\_%' ");
     ht = new HashMap<>();
     tableTypeClauses.put("TEMPORARY VIEW", ht);
-    ht.put("SCHEMAS", "c.relkind = 'v' AND n.nspname ~ '^pg_temp_' ");
-    ht.put("NOSCHEMAS", "c.relkind = 'v' AND c.relname ~ '^pg_temp_' ");
+    ht.put("SCHEMAS", "c.relkind = 'v' AND n.nspname LIKE 'pg\\_temp\\_%' ");
+    ht.put("NOSCHEMAS", "c.relkind = 'v' AND c.relname LIKE 'pg\\_temp\\_%' ");
     ht = new HashMap<>();
     tableTypeClauses.put("TEMPORARY SEQUENCE", ht);
-    ht.put("SCHEMAS", "c.relkind = 'S' AND n.nspname ~ '^pg_temp_' ");
-    ht.put("NOSCHEMAS", "c.relkind = 'S' AND c.relname ~ '^pg_temp_' ");
+    ht.put("SCHEMAS", "c.relkind = 'S' AND n.nspname LIKE 'pg\\_temp\\_%' ");
+    ht.put("NOSCHEMAS", "c.relkind = 'S' AND c.relname LIKE 'pg\\_temp\\_%' ");
     ht = new HashMap<>();
     tableTypeClauses.put("FOREIGN TABLE", ht);
     ht.put("SCHEMAS", "c.relkind = 'f'");
