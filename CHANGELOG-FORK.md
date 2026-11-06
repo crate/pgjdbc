@@ -8,6 +8,17 @@ onto REL42.7.14.
   The fork's information_schema queries listed in the older entries below are not carried over
 - Run the stock tests only in the Stock baseline workflow, which fails when the tests that fail
   against PostgreSQL differ from `.github/stock-baseline/expected-failures.txt`
+- Return `READ_UNCOMMITTED` from `getDefaultTransactionIsolation`, the level CrateDB reports,
+  instead of pgJDBC's `READ_COMMITTED`
+- Answer metadata on top of the stock `pg_catalog` queries where CrateDB differs. `getIndexInfo`
+  and `getDefaultTransactionIsolation` keep the fork's implementations, CrateDB serving neither
+  `pg_get_indexdef` nor a `default_transaction_isolation` setting, and `getColumns` leaves out
+  the subcolumns of an object column
+- List in `getTypeInfo` only the type names CrateDB accepts in `CREATE TABLE`, `object` and
+  `geo_point` included, without the serial types
+- Return no rows from `getVersionColumns`, CrateDB having no `ctid` column
+- Report `pg_catalog` tables as `SYSTEM TABLE` in `getTables`, CrateDB anchoring `~` to the
+  whole name
 - Return generated keys through `INSERT ... RETURNING`, which CrateDB supports since 4.2.0,
   instead of refusing `getGeneratedKeys()` and the generated-keys overloads
 - Use the `doc` schema when neither the URL nor the properties name a database
