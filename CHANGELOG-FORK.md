@@ -30,7 +30,9 @@ onto REL42.7.14.
   and `PgConnection`
 - Send `COMMIT` from `commit()` and `rollback()`, so a connection that saw `BEGIN` leaves the
   transaction block and a pool can reset it
-- Read `ARRAY(OBJECT)` elements as `Map` and `ARRAY(ARRAY(...))` columns as `List`
+- Read `ARRAY(OBJECT)` elements as `Map` and `ARRAY(ARRAY(...))` columns as `List`. Breaking:
+  the fork on REL42.2.5 (crate-jdbc 2.7.0) returned an `ARRAY(OBJECT)` element as a `PGobject`
+  holding the JSON text, so code that casts the element or parses its text has to take the `Map`
 - Accept `float_vector`, `geo_point`, `geo_shape` and `character` in `createArrayOf()`
 - Set SQLState `0A000` when the driver refuses a call, such as `prepareCall` or manual commit
   in strict mode
