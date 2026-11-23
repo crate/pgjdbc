@@ -13,6 +13,10 @@ onto REL42.7.14.
 - Answer metadata on top of the stock `pg_catalog` queries where CrateDB differs. `getIndexInfo`
   and `getDefaultTransactionIsolation` keep the fork's implementations, CrateDB serving neither
   `pg_get_indexdef` nor a `default_transaction_isolation` setting
+- Return no metadata rows for a catalog other than `crate`, and `crate` from `getCatalog()`, as
+  pgJDBC does. Breaking: the fork on REL42.2.5 (crate-jdbc 2.7.0) ignored the catalog argument
+  and returned the URL's database, such as `doc`, from `getCatalog()`, so a call that passes
+  `""` or `doc` as the catalog returns no rows
 - Leave the subcolumns of an object column out of `getColumns` and out of its `ORDINAL_POSITION`
   count. Breaking: the fork on REL42.2.5 reported CrateDB's `ordinal_position`, which counts the
   subcolumns, so a column after an object column gets a lower position
