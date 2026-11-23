@@ -12,8 +12,10 @@ onto REL42.7.14.
   instead of pgJDBC's `READ_COMMITTED`
 - Answer metadata on top of the stock `pg_catalog` queries where CrateDB differs. `getIndexInfo`
   and `getDefaultTransactionIsolation` keep the fork's implementations, CrateDB serving neither
-  `pg_get_indexdef` nor a `default_transaction_isolation` setting, and `getColumns` leaves out
-  the subcolumns of an object column
+  `pg_get_indexdef` nor a `default_transaction_isolation` setting
+- Leave the subcolumns of an object column out of `getColumns` and out of its `ORDINAL_POSITION`
+  count. Breaking: the fork on REL42.2.5 reported CrateDB's `ordinal_position`, which counts the
+  subcolumns, so a column after an object column gets a lower position
 - List in `getTypeInfo` only the type names CrateDB accepts in `CREATE TABLE`, `object` and
   `geo_point` included, without the serial types
 - Return no rows from `getVersionColumns`, CrateDB having no `ctid` column

@@ -1746,6 +1746,9 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
            + " LEFT JOIN pg_catalog.pg_class dc ON (dc.oid=dsc.classoid AND dc.relname='pg_class') "
            + " LEFT JOIN pg_catalog.pg_namespace dn ON (dc.relnamespace=dn.oid AND dn.nspname='pg_catalog') "
            + " WHERE c.relkind in ('r','p','v','f','m') and a.attnum > 0 AND NOT a.attisdropped ");
+    // CrateDB's pg_attribute holds a row for every subcolumn of an object column, named like
+    // o['b']['c']. They are dropped here, below row_number(), so they take no column number.
+    sql.append(" AND a.attname NOT LIKE '%[%' AND a.attname NOT LIKE '%.%' ");
 
     if (schemaPattern != null) {
       sql.append(" AND n.nspname LIKE ?");
@@ -1762,9 +1765,6 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       sql.append(" AND attname LIKE ?");
       args.add(columnNamePattern);
     }
-    // CrateDB's pg_attribute holds a row for every nested subcolumn of an object column,
-    // intermediate objects included, each under a subscripted name such as o['b']['c'].
-    sql.append(" AND attname NOT LIKE '%[%' AND attname NOT LIKE '%.%' ");
     sql.append(" ORDER BY nspname,c.relname,attnum ");
 
     PreparedStatement stmt = prepareMetaDataStatement(sql.toString(), args);
