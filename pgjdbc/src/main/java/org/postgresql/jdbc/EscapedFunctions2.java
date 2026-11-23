@@ -115,14 +115,14 @@ public final class EscapedFunctions2 {
   }
 
   /**
-   * power to pow translation
+   * power translation; CrateDB has no pow()
    *
    * @param buf The buffer to append into
    * @param parsedArgs arguments
    * @throws SQLException if something wrong happens
    */
   public static void sqlpower(StringBuilder buf, List<? extends CharSequence> parsedArgs) throws SQLException {
-    twoArgumentsFunctionCall(buf, "pow(", "power", parsedArgs);
+    twoArgumentsFunctionCall(buf, "power(", "power", parsedArgs);
   }
 
   /**
@@ -189,18 +189,14 @@ public final class EscapedFunctions2 {
   }
 
   /**
-   * left to substring translation
+   * left translation; CrateDB does not parse substring(s for n)
    *
    * @param buf The buffer to append into
    * @param parsedArgs arguments
    * @throws SQLException if something wrong happens
    */
   public static void sqlleft(StringBuilder buf, List<? extends CharSequence> parsedArgs) throws SQLException {
-    if (parsedArgs.size() != 2) {
-      throw new PSQLException(GT.tr("{0} function takes two and only two arguments.", "left"),
-          PSQLState.SYNTAX_ERROR);
-    }
-    appendCall(buf, "substring(", " for ", ")", parsedArgs);
+    twoArgumentsFunctionCall(buf, "left(", "left", parsedArgs);
   }
 
   /**

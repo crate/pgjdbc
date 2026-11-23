@@ -20,9 +20,9 @@ onto REL42.7.14.
 - Leave the subcolumns of an object column out of `getColumns` and out of its `ORDINAL_POSITION`
   count. Breaking: the fork on REL42.2.5 reported CrateDB's `ordinal_position`, which counts the
   subcolumns, so a column after an object column gets a lower position
-- List the JDBC escape functions as pgJDBC does, without `power` and `left`, whose translations
-  `pow()` and `substring(s for n)` CrateDB cannot run. The fork on REL42.2.5 listed CrateDB
-  function names such as `ceil` and `ln`, which the escape syntax does not use
+- List the JDBC escape functions as pgJDBC does, and translate `power` and `left` to `power()`
+  and `left()`, CrateDB having no `pow()` and not parsing `substring(s for n)`. The fork on
+  REL42.2.5 listed CrateDB function names such as `ceil` and `ln`, which the escape syntax does not use
 - List in `getTypeInfo` only the type names CrateDB accepts in `CREATE TABLE`, `object` and
   `geo_point` included, without the serial types
 - Return no rows from `getVersionColumns`, CrateDB having no `ctid` column
