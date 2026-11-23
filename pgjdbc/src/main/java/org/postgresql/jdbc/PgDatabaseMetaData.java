@@ -382,13 +382,12 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   @SuppressWarnings("deprecation")
   public String getNumericFunctions() throws SQLException {
-    // No POWER: it translates to pow(), and CrateDB has no pow().
     return EscapedFunctions.ABS + ',' + EscapedFunctions.ACOS + ',' + EscapedFunctions.ASIN + ','
         + EscapedFunctions.ATAN + ',' + EscapedFunctions.ATAN2 + ',' + EscapedFunctions.CEILING
         + ',' + EscapedFunctions.COS + ',' + EscapedFunctions.COT + ',' + EscapedFunctions.DEGREES
         + ',' + EscapedFunctions.EXP + ',' + EscapedFunctions.FLOOR + ',' + EscapedFunctions.LOG
         + ',' + EscapedFunctions.LOG10 + ',' + EscapedFunctions.MOD + ',' + EscapedFunctions.PI
-        + ',' + EscapedFunctions.RADIANS + ','
+        + ',' + EscapedFunctions.POWER + ',' + EscapedFunctions.RADIANS + ','
         + EscapedFunctions.ROUND + ',' + EscapedFunctions.SIGN + ',' + EscapedFunctions.SIN + ','
         + EscapedFunctions.SQRT + ',' + EscapedFunctions.TAN + ',' + EscapedFunctions.TRUNCATE;
 
@@ -397,15 +396,14 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   @Override
   @SuppressWarnings("deprecation")
   public String getStringFunctions() throws SQLException {
-    // No LEFT: it translates to substring(s for n)
     String funcs = EscapedFunctions.ASCII + ',' + EscapedFunctions.CHAR + ','
-        + EscapedFunctions.CONCAT + ',' + EscapedFunctions.LCASE + ','
+        + EscapedFunctions.CONCAT + ',' + EscapedFunctions.LCASE + ',' + EscapedFunctions.LEFT + ','
         + EscapedFunctions.LENGTH + ',' + EscapedFunctions.LTRIM + ',' + EscapedFunctions.REPEAT
         + ',' + EscapedFunctions.RTRIM + ',' + EscapedFunctions.SPACE + ','
         + EscapedFunctions.SUBSTRING + ',' + EscapedFunctions.UCASE;
 
     // Currently these don't work correctly with parameterized
-    // arguments, so leaving them out. They reorder the arguments
+    // arguments, so leave them out. They reorder the arguments
     // when rewriting the query, but no translation layer is provided,
     // so a setObject(N, obj) will not go to the correct parameter.
     // ','+EscapedFunctions.INSERT+','+EscapedFunctions.LOCATE+
