@@ -3418,23 +3418,23 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
         col("TYPE_SCHEM"),
         col("TYPE_NAME"),
         col("ATTR_NAME"),
-        col("DATA_TYPE"),
+        col("DATA_TYPE", Oid.INT4),
         col("ATTR_TYPE_NAME"),
-        col("ATTR_SIZE"),
-        col("DECIMAL_DIGITS"),
-        col("NUM_PREC_RADIX"),
-        col("NULLABLE"),
+        col("ATTR_SIZE", Oid.INT4),
+        col("DECIMAL_DIGITS", Oid.INT4),
+        col("NUM_PREC_RADIX", Oid.INT4),
+        col("NULLABLE", Oid.INT4),
         col("REMARKS"),
         col("ATTR_DEF"),
-        col("SQL_DATA_TYPE"),
-        col("SQL_DATETIME_SUB"),
-        col("CHAR_OCTET_LENGTH"),
-        col("ORDINAL_POSITION"),
+        col("SQL_DATA_TYPE", Oid.INT4),
+        col("SQL_DATETIME_SUB", Oid.INT4),
+        col("CHAR_OCTET_LENGTH", Oid.INT4),
+        col("ORDINAL_POSITION", Oid.INT4),
         col("IS_NULLABLE"),
         col("SCOPE_CATALOG"),
         col("SCOPE_SCHEMA"),
         col("SCOPE_TABLE"),
-        col("SOURCE_DATA_TYPE"));
+        col("SOURCE_DATA_TYPE", Oid.INT2));
   }
 
   @Override
