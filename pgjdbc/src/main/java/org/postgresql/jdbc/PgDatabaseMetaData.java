@@ -380,25 +380,63 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
   }
 
   @Override
+  @SuppressWarnings("deprecation")
   public String getNumericFunctions() throws SQLException {
-    return "abs,ceil,floor,ln,log,random,round,sqrt,sin,asin,cos,"
-        + "acos,tan,atan";
+    // No POWER: it translates to pow(), and CrateDB has no pow().
+    return EscapedFunctions.ABS + ',' + EscapedFunctions.ACOS + ',' + EscapedFunctions.ASIN + ','
+        + EscapedFunctions.ATAN + ',' + EscapedFunctions.ATAN2 + ',' + EscapedFunctions.CEILING
+        + ',' + EscapedFunctions.COS + ',' + EscapedFunctions.COT + ',' + EscapedFunctions.DEGREES
+        + ',' + EscapedFunctions.EXP + ',' + EscapedFunctions.FLOOR + ',' + EscapedFunctions.LOG
+        + ',' + EscapedFunctions.LOG10 + ',' + EscapedFunctions.MOD + ',' + EscapedFunctions.PI
+        + ',' + EscapedFunctions.RADIANS + ','
+        + EscapedFunctions.ROUND + ',' + EscapedFunctions.SIGN + ',' + EscapedFunctions.SIN + ','
+        + EscapedFunctions.SQRT + ',' + EscapedFunctions.TAN + ',' + EscapedFunctions.TRUNCATE;
+
   }
 
   @Override
+  @SuppressWarnings("deprecation")
   public String getStringFunctions() throws SQLException {
-    return "concat,format,substr,char_length,bit_length,octet_length,"
-        + "lower,upper";
+    // No LEFT: it translates to substring(s for n)
+    String funcs = EscapedFunctions.ASCII + ',' + EscapedFunctions.CHAR + ','
+        + EscapedFunctions.CONCAT + ',' + EscapedFunctions.LCASE + ','
+        + EscapedFunctions.LENGTH + ',' + EscapedFunctions.LTRIM + ',' + EscapedFunctions.REPEAT
+        + ',' + EscapedFunctions.RTRIM + ',' + EscapedFunctions.SPACE + ','
+        + EscapedFunctions.SUBSTRING + ',' + EscapedFunctions.UCASE;
+
+    // Currently these don't work correctly with parameterized
+    // arguments, so leaving them out. They reorder the arguments
+    // when rewriting the query, but no translation layer is provided,
+    // so a setObject(N, obj) will not go to the correct parameter.
+    // ','+EscapedFunctions.INSERT+','+EscapedFunctions.LOCATE+
+    // ','+EscapedFunctions.RIGHT+
+
+    funcs += ',' + EscapedFunctions.REPLACE;
+
+    return funcs;
   }
 
   @Override
+  @SuppressWarnings("deprecation")
   public String getSystemFunctions() throws SQLException {
-    return "";
+    return EscapedFunctions.DATABASE + ',' + EscapedFunctions.IFNULL + ',' + EscapedFunctions.USER;
   }
 
   @Override
+  @SuppressWarnings("deprecation")
   public String getTimeDateFunctions() throws SQLException {
-    return "date_trunc,extract,date_format";
+    String timeDateFuncs = EscapedFunctions.CURDATE + ',' + EscapedFunctions.CURTIME + ','
+        + EscapedFunctions.DAYNAME + ',' + EscapedFunctions.DAYOFMONTH + ','
+        + EscapedFunctions.DAYOFWEEK + ',' + EscapedFunctions.DAYOFYEAR + ','
+        + EscapedFunctions.HOUR + ',' + EscapedFunctions.MINUTE + ',' + EscapedFunctions.MONTH + ','
+        + EscapedFunctions.MONTHNAME + ',' + EscapedFunctions.NOW + ',' + EscapedFunctions.QUARTER
+        + ',' + EscapedFunctions.SECOND + ',' + EscapedFunctions.WEEK + ',' + EscapedFunctions.YEAR;
+
+    timeDateFuncs += ',' + EscapedFunctions.TIMESTAMPADD;
+
+    // +','+EscapedFunctions.TIMESTAMPDIFF;
+
+    return timeDateFuncs;
   }
 
   @Override
